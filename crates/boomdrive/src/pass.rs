@@ -1576,3 +1576,49 @@ mod workspaces {
         );
     }
 }
+
+/// A landing on a repository the configuration does not name, kept alone
+/// as the runner's loop keeps a landing: it runs no git, since the address
+/// is named and nothing is cloned or fetched for it (core.5;
+/// logic-is-tested-as-units-and-few-tests-run-the-binary).
+#[cfg(test)]
+mod landings {
+    use super::{keep_one, Outcome};
+    use crate::config::{self, Address};
+    use crate::forge::Forge;
+    use crate::git::Git;
+    use crate::locks::Locks;
+
+    /// The clones spec's "Told of a repository it does not keep".
+    #[test]
+    fn told_of_a_repository_it_does_not_keep() {
+        let home = tempfile::tempdir().expect("a home");
+        let file = home.path().join(".config/boomdrive/config.toml");
+        let config = config::parse(
+            "accounts.own.drives.home.repositories = [\"agentplot/flume\"]\n",
+            &file,
+            home.path(),
+        )
+        .expect("a configuration");
+        let data = home.path().join(".local/share/boomdrive");
+        let mut lines = Vec::new();
+
+        let outcome = keep_one(
+            &Git::default(),
+            &Forge::new(),
+            &data,
+            &config,
+            &Locks::new(),
+            &Address::parse("someone/else").expect("an address"),
+            &mut |line| lines.push(line),
+        );
+
+        assert_eq!(outcome, Outcome::Kept);
+        assert_eq!(
+            lines,
+            ["someone/else: not kept: the configuration does not name it"]
+        );
+        assert!(!data.join("repositories/someone").exists());
+        assert!(!home.path().join("Code/someone").exists());
+    }
+}

@@ -1,10 +1,12 @@
-//! The library's loop, run in a thread on the scratch host: a landing it
-//! is told of between passes or during one, a failure that does not stop
-//! it, and the configuration read again at every pass, `code_workspaces`
-//! among it (the running spec, the clones spec's landings and the
-//! configuration spec's reading while running; design 10). The runner runs a stub
-//! `flume` and a stub `millpond` of the test's, and no Flume or millpond of
-//! the host's.
+//! The library's loop, run in a thread on the scratch host, told of a
+//! landing during a keeping pass: the host's own keeping pass hears it
+//! between two repositories over real git (the clones spec's "Told during
+//! a keeping pass"; design 10). The rest of the loop's logic, its
+//! landings, failures, readings of the configuration and ticks, is proven
+//! on a paused clock with no process in `keeping.rs`
+//! (logic-is-tested-as-units-and-few-tests-run-the-binary). The runner
+//! runs a stub `flume` and a stub `millpond` of the test's, and no Flume
+//! or millpond of the host's.
 
 mod common;
 mod fakes;
@@ -27,12 +29,12 @@ struct Running {
     stopper: Stopper,
     lines: Receiver<String>,
     thread: JoinHandle<()>,
-    /// The stub `flume` the runner runs, whose calls a test reads.
-    flume: Stub,
-    /// The stub `millpond` the runner runs, whose calls a test reads.
-    millpond: Stub,
+    /// The stub `flume` the runner runs, kept while it runs.
+    _flume: Stub,
+    /// The stub `millpond` the runner runs, kept while it runs.
+    _millpond: Stub,
     /// A stub flume host, which a runner that carries no part never asks.
-    host: StubHost,
+    _host: StubHost,
     /// The edge's runtime, dropped after the runner's thread.
     _runtime: tokio::runtime::Runtime,
 }
@@ -75,9 +77,9 @@ impl Running {
             stopper,
             lines,
             thread,
-            flume,
-            millpond,
-            host,
+            _flume: flume,
+            _millpond: millpond,
+            _host: host,
             _runtime: runtime,
         }
     }
@@ -100,25 +102,6 @@ impl Running {
         panic!("{line:?} not said in time; said: {said:#?}");
     }
 
-    /// How many ticks the stub `millpond` was asked.
-    fn ticks(&self) -> usize {
-        self.millpond.calls().len()
-    }
-
-    /// Waits until the stub `millpond` has been asked `ticks` ticks;
-    /// panics where it is not in time.
-    fn ticked(&self, ticks: usize) {
-        let deadline = Instant::now() + PATIENCE;
-        while self.ticks() < ticks {
-            assert!(
-                Instant::now() < deadline,
-                "{ticks} ticks not run in time: {:?}",
-                self.millpond.calls()
-            );
-            thread::sleep(Duration::from_millis(20));
-        }
-    }
-
     /// Stops the runner, and gives the lines said from the last read, its
     /// stop the last.
     fn stop(self) -> Vec<String> {
@@ -131,15 +114,6 @@ impl Running {
 /// A configuration keeping `addresses`, fetched each `interval`.
 fn every(interval: &str, addresses: &[&str]) -> String {
     format!("fetch_interval = {interval:?}\n{}", keeping(addresses))
-}
-
-/// Writes `text` as the configuration by one rename, so the running
-/// runner never reads it half written.
-fn rewrite(scratch: &Scratch, text: &str) {
-    let file = scratch.config_file();
-    let next = file.with_extension("next");
-    std::fs::write(&next, text).expect("the configuration written");
-    std::fs::rename(&next, &file).expect("the configuration in place");
 }
 
 fn address(text: &str) -> Address {
@@ -177,35 +151,6 @@ fn fetched(scratch: &Scratch, address: &str) -> String {
     )
 }
 
-#[test]
-fn told_between_passes() {
-    let scratch = Scratch::new();
-    let flume = scratch.origin("agentplot/flume");
-    let sluice = scratch.origin("agentplot/sluice");
-    scratch.configure(&every("1h", &["agentplot/flume", "agentplot/sluice"]));
-    let running = Running::start(&scratch);
-    let [.., made] = cloned(&scratch, "agentplot/sluice", &sluice.tip("main"));
-    let first = running.until(&made);
-    assert_eq!(first.len(), 4, "{first:#?}");
-    let sluice_was = sluice.tip("main");
-
-    let landed = flume.commit("main", "landed", "a landing\n");
-    sluice.commit("main", "unlanded", "not told of\n");
-    running.notices.landed(address("agentplot/flume"));
-
-    let lines = moved("agentplot/flume", &landed);
-    assert_eq!(running.until(&lines[0]), lines);
-    assert_eq!(running.stop(), ["boomdrive: stopped"]);
-    assert_eq!(
-        scratch.git(
-            &scratch.home.join("Code/agentplot/flume"),
-            &["rev-parse", "HEAD"]
-        ),
-        landed
-    );
-    assert_eq!(fetched(&scratch, "agentplot/sluice"), sluice_was);
-}
-
 /// The clones spec's "Told during a keeping pass": told of a landing on
 /// `agentplot/timber` while the pass keeps `agentplot/flume`, its fetch
 /// held, the runner keeps the landing after `agentplot/flume` and before
@@ -238,268 +183,4 @@ fn told_during_a_keeping_pass() {
     );
     running.stop();
     assert_eq!(fetched(&scratch, "agentplot/timber"), timber_landed);
-}
-
-#[test]
-fn told_of_a_repository_it_does_not_keep() {
-    let scratch = Scratch::new();
-    let flume = scratch.origin("agentplot/flume");
-    scratch.origin("someone/else");
-    scratch.configure(&every("1h", &["agentplot/flume"]));
-    let running = Running::start(&scratch);
-    running.until(&cloned(&scratch, "agentplot/flume", &flume.tip("main"))[1]);
-    let flume_was = flume.tip("main");
-    flume.commit("main", "later", "not told of\n");
-
-    running.notices.landed(address("someone/else"));
-
-    let named = "someone/else: not kept: the configuration does not name it";
-    assert_eq!(running.until(named), [named]);
-    assert_eq!(running.stop(), ["boomdrive: stopped"]);
-    assert!(!scratch.container("someone/else").exists());
-    assert!(!scratch.home.join("Code/someone").exists());
-    assert_eq!(fetched(&scratch, "agentplot/flume"), flume_was);
-}
-
-#[test]
-fn a_failure_does_not_stop_it() {
-    let scratch = Scratch::new();
-    let flume = scratch.origin("agentplot/flume");
-    let sluice = scratch.origin("agentplot/sluice");
-    scratch.configure(&every("1s", &["agentplot/flume", "agentplot/sluice"]));
-    let running = Running::start(&scratch);
-    running.until(&cloned(&scratch, "agentplot/sluice", &sluice.tip("main"))[1]);
-
-    let away = flume.bare.with_extension("away");
-    std::fs::rename(&flume.bare, &away).expect("the forge's flume taken away");
-    let kept = sluice.commit("main", "later", "kept while flume fails\n");
-    let lines = moved("agentplot/sluice", &kept);
-    let said = running.until(&lines[0]);
-    let (failed, rest) = said.split_at(said.len() - 1);
-    assert_eq!(rest, lines);
-    assert!(!failed.is_empty(), "{said:#?}");
-    for line in failed {
-        assert!(
-            line.starts_with("agentplot/flume: not fetched: "),
-            "{said:#?}"
-        );
-    }
-
-    std::fs::rename(&away, &flume.bare).expect("the forge's flume back");
-    let again = flume.commit("main", "again", "fetched again\n");
-    let lines = moved("agentplot/flume", &again);
-    let said = running.until(&lines[0]);
-    let (failed, rest) = said.split_at(said.len() - 1);
-    assert_eq!(rest, lines);
-    for line in failed {
-        assert!(
-            line.starts_with("agentplot/flume: not fetched: "),
-            "{said:#?}"
-        );
-    }
-    assert_eq!(
-        running.stop().last().map(String::as_str),
-        Some("boomdrive: stopped")
-    );
-}
-
-#[test]
-fn a_repository_added_while_running() {
-    let scratch = Scratch::new();
-    let flume = scratch.origin("agentplot/flume");
-    let sluice = scratch.origin("agentplot/sluice");
-    scratch.configure(&every("1s", &["agentplot/flume"]));
-    let running = Running::start(&scratch);
-    running.until(&cloned(&scratch, "agentplot/flume", &flume.tip("main"))[1]);
-
-    rewrite(
-        &scratch,
-        &every("1s", &["agentplot/flume", "agentplot/sluice"]),
-    );
-
-    let lines = cloned(&scratch, "agentplot/sluice", &sluice.tip("main"));
-    assert_eq!(running.until(&lines[1]), lines);
-    assert_eq!(
-        running.stop().last().map(String::as_str),
-        Some("boomdrive: stopped")
-    );
-    assert!(scratch.home.join("Code/agentplot/sluice").exists());
-}
-
-/// The configuration spec's "Workspaces asked for while running": the
-/// next pass writes the drive `home`'s workspace at the repository root.
-#[test]
-fn workspaces_asked_for_while_running() {
-    let scratch = Scratch::new();
-    let flume = scratch.origin("agentplot/flume");
-    scratch.configure(&every("1s", &["agentplot/flume"]));
-    let running = Running::start(&scratch);
-    running.until(&cloned(&scratch, "agentplot/flume", &flume.tip("main"))[1]);
-    let file = scratch.home.join("Code/home.code-workspace");
-    assert!(!file.exists(), "a workspace not asked for");
-
-    rewrite(
-        &scratch,
-        &format!(
-            "code_workspaces = true\n{}",
-            every("1s", &["agentplot/flume"])
-        ),
-    );
-
-    let written = format!(
-        "boomdrive: workspace written at {}: agentplot/flume",
-        file.display()
-    );
-    assert_eq!(running.until(&written), [written.as_str()]);
-    assert_eq!(
-        running.stop().last().map(String::as_str),
-        Some("boomdrive: stopped")
-    );
-    let workspace: serde_json::Value =
-        serde_json::from_slice(&std::fs::read(&file).expect("the workspace")).expect("JSON");
-    assert_eq!(
-        workspace["folders"],
-        serde_json::json!([{"path": "agentplot/flume"}])
-    );
-}
-
-#[test]
-fn a_file_broken_while_running() {
-    let scratch = Scratch::new();
-    let flume = scratch.origin("agentplot/flume");
-    scratch.configure(&format!(
-        "inboxes = [\"home\"]\n{}",
-        every("1s", &["agentplot/flume"])
-    ));
-    let running = Running::start(&scratch);
-    running.until(&cloned(&scratch, "agentplot/flume", &flume.tip("main"))[1]);
-    let flume_was = flume.tip("main");
-
-    rewrite(
-        &scratch,
-        "fetch_interval = \"1s\"\naccounts.own.drives.home.repositories = [\"flume\"]\n",
-    );
-    let broken = format!(
-        "boomdrive: {}:2: `accounts.own.drives.home.repositories` entry \"flume\": an address is `owner/name`: nothing kept this pass",
-        scratch.config_file().display()
-    );
-    assert_eq!(running.until(&broken), [broken.as_str()]);
-    let later = flume.commit("main", "later", "while the file is broken\n");
-    assert_eq!(running.until(&broken), [broken.as_str()]);
-    // The running spec's "A pass on a broken configuration ticks": a pass
-    // whose configuration did not read ticks all the same, the inboxes of
-    // the last reading.
-    let ticks = running.ticks();
-    assert_eq!(running.until(&broken), [broken.as_str()]);
-    running.ticked(ticks + 1);
-    assert!(
-        running.flume.calls().is_empty(),
-        "{:?}",
-        running.flume.calls()
-    );
-    let view = scratch.home.join("Code/agentplot/flume");
-    assert_eq!(fetched(&scratch, "agentplot/flume"), flume_was);
-    assert_eq!(scratch.git(&view, &["rev-parse", "HEAD"]), flume_was);
-
-    rewrite(&scratch, &every("1s", &["agentplot/flume"]));
-    let lines = moved("agentplot/flume", &later);
-    let said = running.until(&lines[0]);
-    let (passed, rest) = said.split_at(said.len() - 1);
-    assert_eq!(rest, lines);
-    assert!(passed.iter().all(|line| *line == broken), "{said:#?}");
-    assert_eq!(
-        running.stop().last().map(String::as_str),
-        Some("boomdrive: stopped")
-    );
-}
-
-/// The running spec's "No pass runs a settle": naming no control plane
-/// and no inbox, and keeping each second, the runner makes three keeping
-/// passes and asks the stub `flume`, the stub `millpond` and the stub
-/// flume host nothing, since `flume host` keeps the host's watch and a
-/// runner that carries no part reads no status (core.13).
-#[test]
-fn no_pass_runs_a_settle() {
-    let scratch = Scratch::new();
-    let flume = scratch.origin("agentplot/flume");
-    scratch.configure(&every("1s", &["agentplot/flume"]));
-    let running = Running::start(&scratch);
-    running.until(&cloned(&scratch, "agentplot/flume", &flume.tip("main"))[1]);
-
-    for n in 2..=3 {
-        let commit = flume.commit("main", &format!("pass-{n}"), "a later pass\n");
-        running.until(&moved("agentplot/flume", &commit)[0]);
-    }
-
-    assert_eq!(running.flume.calls(), [] as [Vec<String>; 0]);
-    // The running spec's "A runner that carries no part".
-    assert_eq!(running.host.asks(), [] as [String; 0]);
-    assert_eq!(
-        running.millpond.calls(),
-        [] as [Vec<String>; 0],
-        "no inbox named, so no tick"
-    );
-    assert_eq!(
-        running.stop().last().map(String::as_str),
-        Some("boomdrive: stopped")
-    );
-}
-
-/// `millpond tick --inbox <inbox> --json`.
-fn tick(inbox: &str) -> Vec<String> {
-    ["tick", "--inbox", inbox, "--json"]
-        .map(String::from)
-        .to_vec()
-}
-
-/// The running spec's "Each pass ticks each inbox": the configuration
-/// names the inboxes `home` and `work`, and each keeping pass ends with
-/// one `millpond tick` of each, in that order, awaited before the next
-/// pass; an answered tick says nothing (record 0033; core.13).
-#[test]
-fn each_pass_ticks_each_inbox() {
-    let scratch = Scratch::new();
-    let flume = scratch.origin("agentplot/flume");
-    scratch.configure(&format!(
-        "inboxes = [\"home\", \"work\"]\n{}",
-        every("1s", &["agentplot/flume"])
-    ));
-    let running = Running::start(&scratch);
-    running.until(&cloned(&scratch, "agentplot/flume", &flume.tip("main"))[1]);
-    running.ticked(6);
-    let ticks = running.millpond.calls();
-    assert!(ticks.len() >= 4, "{ticks:?}");
-    for pair in ticks.chunks(2).filter(|pair| pair.len() == 2) {
-        assert_eq!(pair, [tick("home"), tick("work")]);
-    }
-    let lines = running.stop();
-    assert!(
-        !lines.iter().any(|line| line.contains("millpond")),
-        "{lines:#?}"
-    );
-}
-
-/// The running spec's "A refused tick said once until millpond ticks
-/// again": millpond refuses `home`'s ticks, and one line says so however
-/// many passes follow; no pass stops for it.
-#[test]
-fn a_refused_tick_is_said_once() {
-    let scratch = Scratch::new();
-    let flume = scratch.origin("agentplot/flume");
-    scratch.configure(&format!(
-        "inboxes = [\"home\"]\n{}",
-        every("1s", &["agentplot/flume"])
-    ));
-    let running = Running::start(&scratch);
-    running.millpond.answers_text("--inbox", "", 1);
-    let mut said = running.until(&cloned(&scratch, "agentplot/flume", &flume.tip("main"))[1]);
-    running.ticked(3);
-    said.extend(running.stop());
-    let refused = "boomdrive: millpond refused the tick of the inbox home: millpond exited 1";
-    assert_eq!(
-        said.iter().filter(|line| *line == refused).count(),
-        1,
-        "{said:#?}"
-    );
-    assert_eq!(said.last().map(String::as_str), Some("boomdrive: stopped"));
 }
