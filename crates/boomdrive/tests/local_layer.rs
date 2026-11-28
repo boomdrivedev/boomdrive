@@ -28,6 +28,8 @@ struct Running {
     thread: JoinHandle<()>,
     /// The stub `flume` the runner runs, held while it runs.
     _flume: Stub,
+    /// The edge's runtime, dropped after the runner's thread.
+    _runtime: tokio::runtime::Runtime,
 }
 
 impl Running {
@@ -41,7 +43,10 @@ impl Running {
                 .find(|(key, _)| key.as_os_str() == OsStr::new(name))
                 .map(|(_, value)| value.clone())
         };
-        let mut runner = Runner::start(None, var, scratch.runner_git()).expect("the runner starts");
+        let runtime = tokio::runtime::Runtime::new().expect("the edge's runtime");
+        let edge = boomdrive::run::Edge::of(runtime.handle());
+        let mut runner =
+            Runner::start(None, var, scratch.runner_git(), edge).expect("the runner starts");
         let flume = Stub::new();
         runner.tools(Programs {
             flume: flume.program(),
@@ -60,6 +65,7 @@ impl Running {
             lines,
             thread,
             _flume: flume,
+            _runtime: runtime,
         }
     }
 

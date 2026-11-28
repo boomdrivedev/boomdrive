@@ -38,12 +38,17 @@ use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::fs::{self, File, TryLockError};
 use std::path::{Path, PathBuf};
+use std::pin::Pin;
 use std::process::ExitCode;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
-use std::sync::{Arc, Condvar, Mutex, MutexGuard};
+use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use tokio::runtime::Handle;
+use tokio::sync::futures::Notified;
+use tokio::sync::Notify;
+use tokio::time::Instant;
 use weir_bounded::Halt;
 
 /// Where the runner says its lines, from the loop and every part's
@@ -63,19 +68,64 @@ pub enum Event {
 #[derive(Clone)]
 pub struct Notices {
     events: Sender<Event>,
+    /// Notified at each event sent, ending the loop's wait.
+    told: Arc<Notify>,
 }
 
 impl Notices {
     /// Notices sent on `events`, to the loop that holds their receiver.
     pub fn new(events: Sender<Event>) -> Notices {
-        Notices { events }
+        Notices {
+            events,
+            told: Arc::new(Notify::new()),
+        }
+    }
+
+    /// Sends `event` to the loop, and ends its wait.
+    fn send(&self, event: Event) {
+        let _ = self.events.send(event);
+        self.told.notify_waiters();
     }
 
     /// Tells the runner of a landing on `address`, which it keeps at once
     /// between passes or between two repositories of a pass, leaving its
     /// timer where it was. A runner that has stopped is told nothing.
     pub fn landed(&self, address: Address) {
-        let _ = self.events.send(Event::Landed(address));
+        self.send(Event::Landed(address));
+    }
+}
+
+/// The runner's edge: the tokio runtime `main` chooses, whose clock every
+/// wait of the runner's loop and of its parts reads, and whose timers and
+/// notices end each wait. The passes stay synchronous on the runner's
+/// threads, and only their waits are the edge's
+/// (a-residents-core-stays-synchronous-behind-a-tokio-edge;
+/// the-runtime-flavour-is-chosen-in-main-and-tests-pause-tokios-clock): a
+/// test runs the runner on a current-thread runtime whose clock is paused,
+/// and moves it.
+#[derive(Clone, Debug)]
+pub struct Edge(Handle);
+
+impl Edge {
+    /// The edge of the runtime `handle` names.
+    pub fn of(handle: &Handle) -> Edge {
+        Edge(handle.clone())
+    }
+
+    /// The edge's time now.
+    pub fn now(&self) -> Instant {
+        let _entered = self.0.enter();
+        Instant::now()
+    }
+
+    /// Waits until `due`, or until `told` is notified, whichever is first.
+    fn wait(&self, due: Instant, told: Pin<&mut Notified<'_>>) {
+        self.0.block_on(async {
+            tokio::select! {
+                () = told => {}
+                () = tokio::time::sleep_until(due) => {}
+            }
+        });
     }
 }
 
@@ -85,7 +135,7 @@ impl Notices {
 #[derive(Debug, Default)]
 pub struct Bell {
     rung: Mutex<Rung>,
-    changed: Condvar,
+    changed: Notify,
 }
 
 #[derive(Debug, Default)]
@@ -119,19 +169,19 @@ impl Bell {
     /// pass's start.
     pub fn wake(&self) {
         self.rung().woken = true;
-        self.changed.notify_all();
+        self.changed.notify_waiters();
     }
 
     /// Tells the part an answer of a command of its came back.
     pub fn answered(&self) {
         self.rung().answered = true;
-        self.changed.notify_all();
+        self.changed.notify_waiters();
     }
 
     /// Stops the part: it begins no further pass.
     pub fn stop(&self) {
         self.rung().stopped = true;
-        self.changed.notify_all();
+        self.changed.notify_waiters();
     }
 
     /// Whether the part was woken since its pass under way began, so its
@@ -155,25 +205,25 @@ impl Bell {
     /// Waits until `due`, or until the part is woken, an answer of its
     /// comes back, or it is stopped. A pass due is told before an answer,
     /// which the pass takes; an answer told is taken.
-    pub fn wait(&self, due: Instant) -> Rang {
-        let mut rung = self.rung();
+    pub fn wait(&self, edge: &Edge, due: Instant) -> Rang {
         loop {
-            if rung.stopped {
-                return Rang::Stopped;
+            let changed = self.changed.notified();
+            let mut changed = std::pin::pin!(changed);
+            changed.as_mut().enable();
+            {
+                let mut rung = self.rung();
+                if rung.stopped {
+                    return Rang::Stopped;
+                }
+                if rung.woken || edge.now() >= due {
+                    return Rang::Due;
+                }
+                if rung.answered {
+                    rung.answered = false;
+                    return Rang::Answered;
+                }
             }
-            let left = due.saturating_duration_since(Instant::now());
-            if rung.woken || left.is_zero() {
-                return Rang::Due;
-            }
-            if rung.answered {
-                rung.answered = false;
-                return Rang::Answered;
-            }
-            rung = self
-                .changed
-                .wait_timeout(rung, left)
-                .unwrap_or_else(|e| e.into_inner())
-                .0;
+            edge.wait(due, changed);
         }
     }
 }
@@ -223,7 +273,7 @@ impl Bells {
 /// stopped (record 0042 as amended on 2026-11-12; core.58).
 #[derive(Clone)]
 pub struct Stopper {
-    events: Sender<Event>,
+    notices: Notices,
     stop: Arc<AtomicBool>,
     bells: Bells,
     /// The runner's halt, `weir-bounded`'s, which every try made for the
@@ -239,7 +289,7 @@ impl Stopper {
     pub fn stop(&self) {
         self.stop.store(true, Ordering::SeqCst);
         self.halt.halt();
-        let _ = self.events.send(Event::Stop);
+        self.notices.send(Event::Stop);
         self.bells.stop();
     }
 }
@@ -409,9 +459,10 @@ pub struct Runner {
     /// The runner's ticks of each inbox, shared by the loop and every
     /// part's thread.
     ticker: Ticker,
-    events: Sender<Event>,
     notices: Notices,
     waiting: Receiver<Event>,
+    /// The edge every wait of the loop and of each part's thread is on.
+    edge: Edge,
     stop: Arc<AtomicBool>,
     /// The runner's halt, `weir-bounded`'s, given to its git and set by its
     /// stop, so every try of a call to a remote made for the runner ends
@@ -444,6 +495,7 @@ struct Host<'a> {
     local: &'a Path,
     data: &'a Path,
     poll_interval: Duration,
+    edge: &'a Edge,
     toolset: &'a dyn Toolset,
     notices: &'a Notices,
     locks: &'a Locks,
@@ -523,6 +575,7 @@ impl Runner {
         file: Option<&Path>,
         var: impl Fn(&str) -> Option<OsString>,
         git: Git,
+        edge: Edge,
     ) -> Result<Runner, String> {
         let flume_socket = Where::from_env(&var);
         let env = Env::read(var)?;
@@ -541,7 +594,7 @@ impl Runner {
         let halt = Halt::default();
         let git = git.halted_by(halt.clone());
         let (events, waiting) = mpsc::channel();
-        let notices = Notices::new(events.clone());
+        let notices = Notices::new(events);
         let bells = Bells::default();
         let control = config
             .control_plane
@@ -565,9 +618,9 @@ impl Runner {
             control,
             flume_socket,
             ticker,
-            events,
             notices,
             waiting,
+            edge,
             stop: Arc::new(AtomicBool::new(false)),
             halt,
             bells,
@@ -630,7 +683,7 @@ impl Runner {
     /// What stops the runner.
     pub fn stopper(&self) -> Stopper {
         Stopper {
-            events: self.events.clone(),
+            notices: self.notices.clone(),
             stop: Arc::clone(&self.stop),
             bells: self.bells.clone(),
             halt: self.halt.clone(),
@@ -701,6 +754,7 @@ impl Runner {
             local: &self.local,
             data: &self.data,
             poll_interval: control.poll_interval,
+            edge: &self.edge,
             toolset: &*self.toolset,
             notices: &self.notices,
             locks: &self.locks,
@@ -838,13 +892,13 @@ impl Runner {
             }
             let mut started = Some(this.config.clone());
             let mut fetch_interval = this.config.fetch_interval;
-            let mut keep_due = Instant::now();
+            let mut keep_due = this.edge.now();
             let mut said_local = LocalLayer::NoFile;
             'passes: loop {
                 let mut kept = false;
-                if Instant::now() >= keep_due {
+                if this.edge.now() >= keep_due {
                     kept = true;
-                    let began = Instant::now();
+                    let began = this.edge.now();
                     let read = match started.take() {
                         Some(config) => Ok(config),
                         None => this.read(),
@@ -864,7 +918,7 @@ impl Runner {
                         }
                         Err(why) => say(format!("boomdrive: {why}: nothing kept this pass")),
                     }
-                    keep_due = next_pass(began, fetch_interval, Instant::now());
+                    keep_due = next_pass(began, fetch_interval, this.edge.now());
                 }
                 if this.stop.load(Ordering::SeqCst) {
                     break 'passes;
@@ -887,12 +941,15 @@ impl Runner {
                     if this.stop.load(Ordering::SeqCst) {
                         break 'passes;
                     }
-                    let wait = keep_due.saturating_duration_since(Instant::now());
-                    match this.waiting.recv_timeout(wait) {
+                    let told = this.notices.told.notified();
+                    let mut told = std::pin::pin!(told);
+                    told.as_mut().enable();
+                    match this.waiting.try_recv() {
                         Ok(Event::Landed(address)) => this.landed(&address, say),
                         Ok(Event::Stop) => break 'passes,
-                        Err(RecvTimeoutError::Timeout) => break,
-                        Err(RecvTimeoutError::Disconnected) => {
+                        Err(TryRecvError::Empty) if this.edge.now() >= keep_due => break,
+                        Err(TryRecvError::Empty) => this.edge.wait(keep_due, told),
+                        Err(TryRecvError::Disconnected) => {
                             unreachable!("the runner holds a sender of its own")
                         }
                     }
@@ -1013,9 +1070,9 @@ impl Host<'_> {
             self.locks,
             &|| bell.answered(),
             |underway| {
-                let mut due = Instant::now();
+                let mut due = self.edge.now();
                 loop {
-                    match bell.wait(due) {
+                    match bell.wait(self.edge, due) {
                         Rang::Stopped => break,
                         Rang::Answered => {
                             let read = config::read_layers(self.file, self.local, self.home);
@@ -1032,7 +1089,7 @@ impl Host<'_> {
                             );
                         }
                         Rang::Due => {
-                            let began = Instant::now();
+                            let began = self.edge.now();
                             bell.begin_pass();
                             let read = config::read_layers(self.file, self.local, self.home);
                             let poll_interval = self.poll_interval;
@@ -1046,7 +1103,7 @@ impl Host<'_> {
                                     Some(carrier.carry_pass(plane, underway, &mut |line| say(line)))
                                 },
                             );
-                            due = passed.next_due(began, Instant::now(), poll_interval);
+                            due = passed.next_due(began, self.edge.now(), poll_interval);
                             // The control pass ends with the ticks of each
                             // inbox, no part of it, before the part waits
                             // (record 0033).
@@ -1193,8 +1250,23 @@ fn lock(data: &Path) -> Result<File, String> {
 /// as amended on 2026-11-12; core.58). Exits 2 where the runner does not
 /// start, 1 where `once`'s passes failed or were stopped, and 0 otherwise.
 pub fn main(file: Option<&Path>, once: bool) -> ExitCode {
-    let started =
-        Runner::start(file, |name| std::env::var_os(name), Git::default()).and_then(|runner| {
+    // The edge's runtime: multi-thread, as `main` chooses it for a host,
+    // its one worker driving the waits' timers (the decision
+    // the-runtime-flavour-is-chosen-in-main-and-tests-pause-tokios-clock).
+    let runtime = match tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(1)
+        .enable_time()
+        .build()
+    {
+        Ok(runtime) => runtime,
+        Err(error) => {
+            eprintln!("boomdrive: the runner's runtime cannot be made: {error}");
+            return ExitCode::from(2);
+        }
+    };
+    let edge = Edge::of(runtime.handle());
+    let started = Runner::start(file, |name| std::env::var_os(name), Git::default(), edge)
+        .and_then(|runner| {
             runner.stop_on_signals()?;
             Ok(runner)
         });
@@ -1222,11 +1294,23 @@ pub fn main(file: Option<&Path>, once: bool) -> ExitCode {
 
 #[cfg(test)]
 mod tests {
-    use super::{next_pass, Bell, Bells, Event, Rang, Stopper, Ticker};
+    use super::{next_pass, Bell, Bells, Edge, Event, Notices, Rang, Stopper, Ticker};
     use crate::carry::next_due;
     use std::fs;
     use std::os::unix::fs::PermissionsExt;
-    use std::time::{Duration, Instant};
+    use std::time::Duration;
+    use tokio::time::Instant;
+
+    /// A current-thread runtime whose clock is paused, and its edge.
+    fn paused() -> (tokio::runtime::Runtime, Edge) {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_time()
+            .start_paused(true)
+            .build()
+            .unwrap();
+        let edge = Edge::of(runtime.handle());
+        (runtime, edge)
+    }
 
     /// The running spec's "A pass ends while a tick is under way": a pass
     /// that ends while another's ticks run runs none, and returns without
@@ -1277,6 +1361,7 @@ mod tests {
     /// wakes no other.
     #[test]
     fn a_wake_is_read_by_its_parts_pass_under_way() {
+        let (_runtime, edge) = paused();
         let bells = Bells::default();
         let (home, work) = (bells.of("home"), bells.of("work"));
         let wake = bells.waker("home");
@@ -1284,8 +1369,8 @@ mod tests {
         wake();
         assert!(home.woken());
         assert!(!work.woken());
-        let later = Instant::now() + Duration::from_secs(3600);
-        assert_eq!(home.wait(later), Rang::Due);
+        let later = edge.now() + Duration::from_secs(3600);
+        assert_eq!(home.wait(&edge, later), Rang::Due);
         home.begin_pass();
         assert!(!home.woken());
     }
@@ -1294,17 +1379,19 @@ mod tests {
     /// however due.
     #[test]
     fn a_stop_ends_every_wait() {
+        let (_runtime, edge) = paused();
         let bells = Bells::default();
         let bell = bells.of("home");
+        let on = edge.clone();
         let waiting =
-            std::thread::spawn(move || bell.wait(Instant::now() + Duration::from_secs(3600)));
+            std::thread::spawn(move || bell.wait(&on, on.now() + Duration::from_secs(3600)));
         std::thread::sleep(Duration::from_millis(50));
         bells.stop();
         assert_eq!(waiting.join().unwrap(), Rang::Stopped);
         let stopped = Bell::default();
         stopped.stop();
         stopped.wake();
-        assert_eq!(stopped.wait(Instant::now()), Rang::Stopped);
+        assert_eq!(stopped.wait(&edge, edge.now()), Rang::Stopped);
     }
 
     /// The running spec's "Stopped with a fetch in flight" and "Stopped
@@ -1319,7 +1406,7 @@ mod tests {
         let bell = bells.of("home");
         let halt = weir_bounded::Halt::default();
         let stopper = Stopper {
-            events,
+            notices: Notices::new(events),
             stop: std::sync::Arc::clone(&stop),
             bells,
             halt: halt.clone(),

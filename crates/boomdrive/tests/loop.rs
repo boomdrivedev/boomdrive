@@ -33,6 +33,8 @@ struct Running {
     millpond: Stub,
     /// A stub flume host, which a runner that carries no part never asks.
     host: StubHost,
+    /// The edge's runtime, dropped after the runner's thread.
+    _runtime: tokio::runtime::Runtime,
 }
 
 impl Running {
@@ -47,7 +49,10 @@ impl Running {
                 .find(|(key, _)| key.as_os_str() == OsStr::new(name))
                 .map(|(_, value)| value.clone())
         };
-        let mut runner = Runner::start(None, var, scratch.runner_git()).expect("the runner starts");
+        let runtime = tokio::runtime::Runtime::new().expect("the edge's runtime");
+        let edge = boomdrive::run::Edge::of(runtime.handle());
+        let mut runner =
+            Runner::start(None, var, scratch.runner_git(), edge).expect("the runner starts");
         let flume = Stub::new();
         let millpond = Stub::new();
         let host = StubHost::new(flume.dir.path());
@@ -73,6 +78,7 @@ impl Running {
             flume,
             millpond,
             host,
+            _runtime: runtime,
         }
     }
 
