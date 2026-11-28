@@ -198,78 +198,6 @@ fn taken_at_the_start() {
     assert!(scratch.clone_of("agentplot/sluice").exists());
 }
 
-/// The configuration spec's "A fault said once": a local layer that is
-/// not TOML for three passes is named once, and once mended is said taken
-/// once.
-#[test]
-fn a_fault_said_once() {
-    let scratch = Scratch::new();
-    let flume = scratch.origin("agentplot/flume");
-    let sluice = scratch.origin("agentplot/sluice");
-    let managed = every_second("", &["agentplot/flume"]);
-    scratch.configure(&managed);
-    let broken = "accounts.own.drives.home.repositories = [\n";
-    scratch.configure_local(broken);
-    let named = not_taken(&scratch, &fault_of(&scratch, &managed, broken));
-
-    let running = Running::start(&scratch);
-    let first = running.until(&cloned(&scratch, "agentplot/flume", &flume.tip("main"))[1]);
-    assert_eq!(first[0], named, "{first:#?}");
-    for pass in 0..3 {
-        let later = flume.commit("main", &format!("later-{pass}"), "a later commit\n");
-        assert_eq!(
-            running.until(&moved("agentplot/flume", &later)),
-            [moved("agentplot/flume", &later)]
-        );
-    }
-
-    rewrite(&scratch.local_file(), &keeping(&["agentplot/sluice"]));
-    assert_eq!(running.until(&taken(&scratch)), [taken(&scratch)]);
-    let lines = cloned(&scratch, "agentplot/sluice", &sluice.tip("main"));
-    assert_eq!(running.until(&lines[1]), lines);
-    let later = flume.commit("main", "mended", "after the local layer is mended\n");
-    assert_eq!(
-        running.until(&moved("agentplot/flume", &later)),
-        [moved("agentplot/flume", &later)]
-    );
-    assert_eq!(running.stop(), ["boomdrive: stopped"]);
-}
-
-/// A running runner whose pinned `accounts` the local layer sets a drive's
-/// repositories in says them passed over once, at its first pass, and not
-/// again.
-#[test]
-fn pinned_accounts_passed_over_said_once() {
-    let scratch = Scratch::new();
-    let flume = scratch.origin("agentplot/flume");
-    scratch.origin("agentplot/sluice");
-    scratch.configure(&every_second(
-        "pin = [\"accounts\"]\n",
-        &["agentplot/flume"],
-    ));
-    scratch.configure_local(&keeping(&["agentplot/sluice"]));
-    let passed_over = format!(
-        "{}; `accounts.own.drives.home.repositories` passed over, pinned by `accounts`",
-        taken(&scratch)
-    );
-
-    let running = Running::start(&scratch);
-    let first = running.until(&cloned(&scratch, "agentplot/flume", &flume.tip("main"))[1]);
-    assert_eq!(
-        first,
-        [passed_over.clone(), first[1].clone(), first[2].clone()]
-    );
-    for pass in 0..2 {
-        let later = flume.commit("main", &format!("later-{pass}"), "a later commit\n");
-        assert_eq!(
-            running.until(&moved("agentplot/flume", &later)),
-            [moved("agentplot/flume", &later)]
-        );
-    }
-    assert_eq!(running.stop(), ["boomdrive: stopped"]);
-    assert!(!scratch.container("agentplot/sluice").exists());
-}
-
 /// The `folders` of the workspace at `file`, as written.
 fn folders(file: &Path) -> serde_json::Value {
     let workspace: serde_json::Value =
@@ -359,35 +287,4 @@ fn a_repository_the_local_layer_drops() {
     assert_eq!(running.stop(), ["boomdrive: stopped"]);
     assert!(!scratch.container("agentplot/sluice").exists());
     assert!(scratch.clone_of("agentplot/flume").exists());
-}
-
-/// The configuration spec's "A local file removed": the gone line is said
-/// once, and the next pass lets go of what only the local layer named.
-#[test]
-fn a_local_file_removed() {
-    let scratch = Scratch::new();
-    let flume = scratch.origin("agentplot/flume");
-    let sluice = scratch.origin("agentplot/sluice");
-    scratch.configure(&every_second("", &["agentplot/flume"]));
-    scratch.configure_local(&keeping(&["agentplot/sluice"]));
-
-    let running = Running::start(&scratch);
-    running.until(&cloned(&scratch, "agentplot/sluice", &sluice.tip("main"))[1]);
-
-    std::fs::remove_file(scratch.local_file()).expect("the local layer removed");
-    let gone = format!(
-        "boomdrive: {}: gone, the managed layer read alone",
-        scratch.local_file().display()
-    );
-    let removed = "agentplot/sluice: removed: clone and view";
-    assert_eq!(running.until(removed), [gone, removed.to_string()]);
-    for pass in 0..2 {
-        let later = flume.commit("main", &format!("later-{pass}"), "still kept\n");
-        assert_eq!(
-            running.until(&moved("agentplot/flume", &later)),
-            [moved("agentplot/flume", &later)]
-        );
-    }
-    assert_eq!(running.stop(), ["boomdrive: stopped"]);
-    assert!(!scratch.container("agentplot/sluice").exists());
 }

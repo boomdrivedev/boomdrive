@@ -470,6 +470,19 @@ impl Running {
         Running::over(clock, text, Vec::new(), FakeFlume::new(), None)
     }
 
+    /// A runner keeping its repositories alone over the managed layer
+    /// `managed` and the local layer `local`.
+    pub fn layered(clock: Clock, managed: &str, local: &str) -> Running {
+        Running::start(
+            clock,
+            managed,
+            Some(local),
+            Vec::new(),
+            FakeFlume::new(),
+            None,
+        )
+    }
+
     /// A runner over the configuration `text`, carrying `parts` over
     /// `flume`, its report file holding `report` where one is given when
     /// it starts, its loop on a thread of its own.
@@ -480,10 +493,27 @@ impl Running {
         flume: FakeFlume,
         report: Option<Report>,
     ) -> Running {
+        Running::start(clock, text, None, parts, flume, report)
+    }
+
+    /// A runner as [`Running::over`] starts it, its local layer `local`
+    /// where one is given.
+    fn start(
+        clock: Clock,
+        text: &str,
+        local: Option<&str>,
+        parts: Vec<(&str, Box<dyn ControlPlane + Send>)>,
+        flume: FakeFlume,
+        report: Option<Report>,
+    ) -> Running {
         let home = tempfile::tempdir().expect("a home");
         let file = home.path().join(".config/boomdrive/config.toml");
         std::fs::create_dir_all(file.parent().expect("its folder")).expect("its folder");
         std::fs::write(&file, text).expect("the configuration");
+        if let Some(local) = local {
+            std::fs::write(file.with_file_name("config.local.toml"), local)
+                .expect("the local layer");
+        }
         let data = home.path().join(".local/share/boomdrive");
         let container = data.join("repositories").join(KEPT);
         std::fs::create_dir_all(&container).expect("the clone's container");
@@ -605,6 +635,25 @@ impl Running {
     /// The runner's configuration file.
     pub fn config_file(&self) -> PathBuf {
         self.home.path().join(".config/boomdrive/config.toml")
+    }
+
+    /// The runner's home, `HOME`.
+    pub fn home(&self) -> &Path {
+        self.home.path()
+    }
+
+    /// The runner's local layer.
+    pub fn local_file(&self) -> PathBuf {
+        self.home.path().join(".config/boomdrive/config.local.toml")
+    }
+
+    /// Writes `text` as the runner's local layer, whole, as an editor's
+    /// rename leaves it.
+    pub fn rewrite_local(&self, text: &str) {
+        let file = self.local_file();
+        let next = file.with_extension("next");
+        std::fs::write(&next, text).expect("the local layer written");
+        std::fs::rename(&next, &file).expect("the local layer in place");
     }
 
     /// Holds the next keeping pass, under the clone's lock, until

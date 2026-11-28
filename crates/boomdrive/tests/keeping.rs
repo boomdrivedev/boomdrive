@@ -3,9 +3,10 @@
 //! a keeping pass that fails stopping nothing, the configuration read
 //! again at every pass, a file broken while running, no settle and no
 //! tick where no inbox is named, each inbox ticked after each pass, and a
-//! refused tick said once (the running spec, the clones spec's landings
-//! and the configuration spec's reading while running; design 10; record
-//! 0033; core.13). The keeper, Flume and millpond are held in memory, so
+//! refused tick said once, and the local layer's fault, pinned keys and
+//! removal each said once (the running spec, the clones spec's landings
+//! and the configuration spec's reading while running and its local
+//! layer; design 10; record 0033; core.13, core.17). The keeper, Flume and millpond are held in memory, so
 //! no test starts a process, git or a socket
 //! (logic-is-tested-as-units-and-few-tests-run-the-binary). `loop.rs`
 //! keeps the landing told during a keeping pass, which the host's own
@@ -229,4 +230,136 @@ fn a_refused_tick_is_said_once() {
         "{said:#?}"
     );
     assert_eq!(said.last().map(String::as_str), Some("boomdrive: stopped"));
+}
+
+/// A local layer keeping `addresses`, in order, in the drive `home`.
+fn local(addresses: &[&str]) -> String {
+    let entries: Vec<String> = addresses.iter().map(|a| format!("{a:?}")).collect();
+    format!(
+        "accounts.own.drives.home.repositories = [{}]\n",
+        entries.join(", ")
+    )
+}
+
+/// The line a pass says of the local layer `running` reads taken.
+fn taken(running: &Running) -> String {
+    format!("boomdrive: {}: taken", running.local_file().display())
+}
+
+/// The configuration spec's "A fault said once": a local layer that is
+/// not TOML for three passes is named once, the managed layer's
+/// repositories kept alone, and once mended is said taken once, both
+/// layers' repositories kept.
+#[test]
+fn a_fault_said_once() {
+    let managed = every("1s", &["agentplot/flume"]);
+    let broken = "accounts.own.drives.home.repositories = [\n";
+    let running = Running::layered(Clock::paused(), &managed, broken);
+    let fault = match boomdrive::config::parse_layers(
+        &managed,
+        &running.config_file(),
+        Some(broken),
+        &running.local_file(),
+        running.home(),
+    )
+    .expect("a managed layer")
+    .local
+    {
+        boomdrive::config::LocalLayer::NotTaken {
+            fault: Some(fault), ..
+        } => fault,
+        other => panic!("not taken for a fault: {other:?}"),
+    };
+    let named = format!(
+        "boomdrive: {}: not taken, the managed layer read alone and nothing let go: {fault}",
+        running.local_file().display()
+    );
+    let (_, before) = running.until(&named);
+    for passes in 2..=3 {
+        running.advance(SECOND);
+        assert!(
+            patiently(|| running.kept().len() == passes),
+            "pass {passes}"
+        );
+    }
+
+    running.rewrite_local(&local(&["agentplot/sluice"]));
+    running.advance(SECOND);
+    let (_, between) = running.until(&taken(&running));
+    assert!(patiently(|| running.kept().len() == 4), "the mended pass");
+    let kept = running.kept_repositories();
+
+    assert_eq!(before, [] as [String; 0]);
+    assert_eq!(between, [] as [String; 0], "the fault is said once");
+    assert_eq!(kept[2], ["agentplot/flume"]);
+    assert_eq!(kept[3], ["agentplot/flume", "agentplot/sluice"]);
+    assert_eq!(stopped(running), ["boomdrive: stopped"]);
+}
+
+/// A running runner whose pinned `accounts` the local layer sets a drive's
+/// repositories in says them passed over once, at its first pass, and
+/// not again, keeping the managed layer's alone.
+#[test]
+fn pinned_accounts_passed_over_said_once() {
+    let running = Running::layered(
+        Clock::paused(),
+        &format!(
+            "pin = [\"accounts\"]\n{}",
+            every("1s", &["agentplot/flume"])
+        ),
+        &local(&["agentplot/sluice"]),
+    );
+    let passed_over = format!(
+        "{}; `accounts.own.drives.home.repositories` passed over, pinned by `accounts`",
+        taken(&running)
+    );
+    let (_, before) = running.until(&passed_over);
+    for passes in 2..=3 {
+        running.advance(SECOND);
+        assert!(
+            patiently(|| running.kept().len() == passes),
+            "pass {passes}"
+        );
+    }
+
+    assert_eq!(before, [] as [String; 0]);
+    assert!(
+        running
+            .kept_repositories()
+            .iter()
+            .all(|kept| kept == &["agentplot/flume"]),
+        "{:?}",
+        running.kept_repositories()
+    );
+    assert_eq!(stopped(running), ["boomdrive: stopped"]);
+}
+
+/// The configuration spec's "A local file removed": the gone line is said
+/// once, and the passes after keep the managed layer's repositories
+/// alone, so the next lets go of what only the local layer named.
+#[test]
+fn a_local_file_removed() {
+    let running = Running::layered(
+        Clock::paused(),
+        &every("1s", &["agentplot/flume"]),
+        &local(&["agentplot/sluice"]),
+    );
+    running.until(&taken(&running));
+
+    std::fs::remove_file(running.local_file()).expect("the local layer removed");
+    let gone = format!(
+        "boomdrive: {}: gone, the managed layer read alone",
+        running.local_file().display()
+    );
+    running.advance(SECOND);
+    let (_, before) = running.until(&gone);
+    running.advance(SECOND);
+    assert!(patiently(|| running.kept().len() == 3), "the third pass");
+    let kept = running.kept_repositories();
+
+    assert_eq!(before, [] as [String; 0]);
+    assert_eq!(kept[0], ["agentplot/flume", "agentplot/sluice"]);
+    assert_eq!(kept[1], ["agentplot/flume"]);
+    assert_eq!(kept[2], ["agentplot/flume"]);
+    assert_eq!(stopped(running), ["boomdrive: stopped"], "gone said once");
 }
