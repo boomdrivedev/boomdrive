@@ -24,7 +24,7 @@ use crate::forge::Forge;
 use crate::git::Git;
 use crate::locks::Locks;
 use crate::millpond::{self, Ticks};
-use crate::pass::{self, Outcome};
+use crate::pass::{Keeper, Keeping, Outcome};
 use crate::planes;
 use crate::report::{self, ReportFile};
 use crate::terminal::Relays;
@@ -356,12 +356,13 @@ pub struct Runner {
     /// Each clone's lock, which the keeper takes alone and a launch into
     /// the clone shared (design Decision 4).
     locks: Locks,
-    /// What gives each fetch its credential, keeping the App's token for
-    /// each repository across passes, minted from `[forge]`'s key or asked
-    /// of a control plane that holds the App, made at start, shared by the
-    /// loop and the keeping of a landing (record 0007 as amended on
+    /// What keeps the clones, the loop's passes and the keeping of a
+    /// landing: the host's, by git, each fetch given its credential by a
+    /// forge made at start, which keeps the App's token for each
+    /// repository across passes, minted from `[forge]`'s key or asked of a
+    /// control plane that holds the App (record 0007 as amended on
     /// 2026-11-11 and 2026-11-18; record 0053; design Decisions 3 and 5).
-    forge: Forge,
+    keeper: Box<dyn Keeper>,
     /// The one report file, each part keeping its share of it (design
     /// Decision 5).
     report: ReportFile,
@@ -483,7 +484,11 @@ impl Runner {
             .map(|table| Control::open(table, &file, &data, &bells, &halt));
         let report = ReportFile::new(&report::control_dir(&data));
         let ticker = Ticker::new(config.inboxes.clone());
-        let forge = Forge::for_runner(&config, &file);
+        let keeper = Box::new(Keeping {
+            git: git.clone(),
+            forge: Forge::for_runner(&config, &file),
+            data: data.clone(),
+        });
         Ok(Runner {
             git,
             home: env.home,
@@ -502,8 +507,8 @@ impl Runner {
             halt,
             bells,
             locks: Locks::new(),
-            forge,
             report,
+            keeper,
             _lock: lock,
         })
     }
@@ -657,10 +662,7 @@ impl Runner {
     /// core.58).
     pub fn once(&mut self, say: Say<'_>) -> Outcome {
         self.say_local(&mut LocalLayer::NoFile, &self.config.local, say);
-        let kept = pass::pass(
-            &self.git,
-            &self.forge,
-            &self.data,
+        let kept = self.keeper.pass(
             &self.config,
             &self.locks,
             &self.stop,
@@ -787,10 +789,7 @@ impl Runner {
                             this.say_local(&mut said_local, &config.local, say);
                             fetch_interval = config.fetch_interval;
                             this.ticker.read(&config.inboxes);
-                            pass::pass(
-                                &this.git,
-                                &this.forge,
-                                &this.data,
+                            this.keeper.pass(
                                 &config,
                                 &this.locks,
                                 &this.stop,
@@ -884,15 +883,8 @@ impl Runner {
     fn landed(&self, address: &Address, say: Say<'_>) {
         match self.read() {
             Ok(config) => {
-                pass::keep_one(
-                    &self.git,
-                    &self.forge,
-                    &self.data,
-                    &config,
-                    &self.locks,
-                    address,
-                    &mut |line| say(line),
-                );
+                self.keeper
+                    .keep_one(&config, &self.locks, address, &mut |line| say(line));
             }
             Err(why) => say(format!(
                 "boomdrive: {why}: nothing kept at the landing on {address}"

@@ -44,7 +44,7 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::io;
 use std::ops::ControlFlow;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 /// Whether every git call of a pass succeeded, and every workspace it
@@ -74,6 +74,80 @@ impl Outcome {
 /// whether it changed a clone, so the pass reads its clones again: the
 /// loop's keeping of the landings told since (design Decision 3).
 pub type Between<'a> = &'a mut dyn FnMut() -> bool;
+
+/// The runner's seam to the keeping of its clones: a keeping pass over a
+/// configuration, and the keeping of one repository alone at a landing
+/// told of it, each repository under its lock among the clones' `locks`
+/// (design 9; design Decision 3). [`Keeping`] keeps the host's clones by
+/// git; the runner's loop and `run --once` reach them through it alone.
+pub trait Keeper: Send + Sync {
+    /// One keeping pass over `config`, as [`pass`] makes it.
+    fn pass(
+        &self,
+        config: &Config,
+        locks: &Locks,
+        stop: &AtomicBool,
+        between: Between<'_>,
+        say: &mut dyn FnMut(String),
+    ) -> Outcome;
+
+    /// `address` kept alone, as [`keep_one`] keeps it.
+    fn keep_one(
+        &self,
+        config: &Config,
+        locks: &Locks,
+        address: &Address,
+        say: &mut dyn FnMut(String),
+    ) -> Outcome;
+}
+
+/// The keeper of the host's clones in `data`, by `git`, each fetch given
+/// what `forge` gives.
+pub struct Keeping {
+    pub git: Git,
+    pub forge: Forge,
+    pub data: PathBuf,
+}
+
+impl Keeper for Keeping {
+    fn pass(
+        &self,
+        config: &Config,
+        locks: &Locks,
+        stop: &AtomicBool,
+        between: Between<'_>,
+        say: &mut dyn FnMut(String),
+    ) -> Outcome {
+        pass(
+            &self.git,
+            &self.forge,
+            &self.data,
+            config,
+            locks,
+            stop,
+            between,
+            say,
+        )
+    }
+
+    fn keep_one(
+        &self,
+        config: &Config,
+        locks: &Locks,
+        address: &Address,
+        say: &mut dyn FnMut(String),
+    ) -> Outcome {
+        keep_one(
+            &self.git,
+            &self.forge,
+            &self.data,
+            config,
+            locks,
+            address,
+            say,
+        )
+    }
+}
 
 /// One pass over `config`, the runner's clones kept in `data`, each
 /// fetch given what `forge` gives for its repository, each repository
