@@ -556,7 +556,7 @@ fn stand_in() -> PathBuf {
 fn stand_in() -> PathBuf {
     panic!(
         "the stand-in for Claude Code is built under the feature stand-in: \
-         `cargo test -p boomdrive --features stand-in`, as `moon run boomdrive:test` runs it"
+         `cargo nextest run -p boomdrive --features stand-in`, as `moon run boomdrive:test` runs it"
     )
 }
 

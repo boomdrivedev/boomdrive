@@ -36,7 +36,7 @@ tasks:
   # as they stand, with the stand-in for Claude Code its feature stand-in
   # builds.
   test:
-    command: 'cargo test -p boomdrive --features stand-in'
-    inputs: ['/crates/boomdrive/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive-crew/**/*', '/crates/boomdrive-hosted/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml', '/flake.lock', '/nix/tests/files/**/*', '/nix/tests/data-dirs.json', '/nix/tests/clone-dirs.json', '/nix/tests/view-dirs.json', '/site/src/start/**/*', '$BOOMDRIVE_SET_FLUME', '$BOOMDRIVE_SET_SLUICE']
+    command: 'cargo nextest run -p boomdrive --features stand-in'
+    inputs: ['/crates/boomdrive/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive-crew/**/*', '/crates/boomdrive-hosted/**/*', '/.config/nextest.toml', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml', '/flake.lock', '/nix/tests/files/**/*', '/nix/tests/data-dirs.json', '/nix/tests/clone-dirs.json', '/nix/tests/view-dirs.json', '/site/src/start/**/*', '$BOOMDRIVE_SET_FLUME', '$BOOMDRIVE_SET_SLUICE']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}

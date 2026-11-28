@@ -372,14 +372,15 @@ fn every_crate_is_a_moon_project_of_its_own() {
 }
 
 /// core.7: each crate's check-fast tasks format, lint, type-check and
-/// test it, one task per check, each one command.
+/// test it, one task per check, each one command; its tests run under
+/// cargo-nextest (each-tools-tests-run-under-cargo-nextest).
 #[test]
 fn each_check_is_one_task() {
     let checks = [
         ("format", "cargo fmt --check -p"),
         ("lint", "cargo clippy -p"),
         ("typecheck", "cargo check -p"),
-        ("test", "cargo test -p"),
+        ("test", "cargo nextest run -p"),
     ];
     for name in crates() {
         let project = project(&name);

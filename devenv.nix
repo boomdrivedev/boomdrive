@@ -75,6 +75,14 @@ let
   deadnixVersion = "1.3.2";
   actionlintVersion = "1.7.12";
 
+  # cargo-nextest, which runs each crate's test task: each test in a
+  # process of its own, so the gate finds a child a test leaves running
+  # (each-tools-tests-run-under-cargo-nextest; a-leaked-child-fails-its-
+  # test). nixpkgs' build, pinned by devenv.lock and asserted to be this
+  # version, the one sluice's tree pins, so every host that runs the gate
+  # runs the same (core.8).
+  nextestVersion = "0.9.143";
+
   # The site's tools (record 0038, design Decision 5): bun, which installs
   # its packages and runs Astro, and Node.js, which runs Astro's bin under
   # bun, nixpkgs' builds pinned by devenv.lock and asserted to be these
@@ -319,6 +327,10 @@ in
     (
       assert pkgs.actionlint.version == actionlintVersion;
       pkgs.actionlint
+    )
+    (
+      assert pkgs.cargo-nextest.version == nextestVersion;
+      pkgs.cargo-nextest
     )
     (
       assert pkgs.bun.version == bunVersion;

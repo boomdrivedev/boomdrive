@@ -26,8 +26,8 @@ tasks:
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
   test:
-    command: 'cargo test -p boomdrive-hosted'
-    inputs: ['/crates/boomdrive-hosted/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive/tests/fixtures/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
+    command: 'cargo nextest run -p boomdrive-hosted'
+    inputs: ['/crates/boomdrive-hosted/**/*', '/crates/boomdrive-control/**/*', '/crates/boomdrive/tests/fixtures/**/*', '/.config/nextest.toml', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
   # Each version protocol/spoken.json marks spoken is one boomdrive-cloud's
