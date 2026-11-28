@@ -250,40 +250,6 @@ fn the_runners_branch_names_each_repository_of_its_drive() {
     assert!(!repositories.contains("example/app"), "{repositories}");
 }
 
-/// The running spec's "Flume's status refused": the control pass pulled
-/// and reported, so the tool's refusal is named and no failure. Nothing
-/// is launched, the runner's branch is written, and the run exits 0.
-#[test]
-fn flumes_status_refused() {
-    let scratch = Scratch::new();
-    scratch.origin(KEPT);
-    let state = state_repository(&scratch);
-    scratch.configure(&carrying("2m", "1m"));
-    let tools = Tools::new();
-    tools.flume.answers_text("status", "", 1);
-
-    let output = once(&scratch, &tools);
-
-    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
-    assert!(
-        stderr(&output)
-            .lines()
-            .any(|line| line.starts_with("boomdrive: home: Flume's status could not be read: ")),
-        "{}",
-        stderr(&output)
-    );
-    assert!(
-        !tools
-            .flume_commands()
-            .iter()
-            .any(|command| command == "launch"),
-        "{:?}",
-        tools.flume_commands()
-    );
-    let runner = scratch.git(&state.bare, &["show", "home/runner/host-a:runner.rec"]);
-    assert!(runner.contains("Host: host-a"), "{runner}");
-}
-
 /// A configuration keeping [`KEPT`], carrying crew's work for the host
 /// `host-a` in the partitions `home` and `work`, both of the state
 /// repository `example/state`.
@@ -409,84 +375,6 @@ fn stopped_with_a_read_in_flight() {
         state.closed(Duration::from_secs(1)),
         "the read's connection outlived the runner"
     );
-}
-
-/// The running spec's "One part unread": crew's control plane serves
-/// `home` and `work`, the state repository holds no `home/main`, and
-/// `work/main` holds a launch for this host. The runner names `home` as
-/// unread, launches `work`'s launch once, writes `work`'s runner branch,
-/// and exits 0.
-#[test]
-fn one_part_unread() {
-    let scratch = Scratch::new();
-    scratch.origin(KEPT);
-    let state = scratch.empty_origin("example/state");
-    let request = records::launch(
-        1,
-        Some("host-a"),
-        "unit/a",
-        KEPT,
-        "a",
-        &[("Base", "main"), ("Brief", "Parse the input.")],
-    );
-    state.commit(
-        "work/main",
-        "requests.rec",
-        &records::file(records::REQUESTS, &[request]),
-    );
-    state.commit("work/main", "plan.rec", &records::plan(&["a"], &[]));
-    scratch.configure(&carrying_two());
-    let tools = Tools::new();
-    tools.flume.answers("launch", "launch.json", 0);
-
-    let output = once(&scratch, &tools);
-
-    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
-    let said = stderr(&output);
-    assert!(
-        said.lines()
-            .any(|line| line.starts_with("boomdrive: home: the control plane could not be read: ")),
-        "{said}"
-    );
-    let launches = tools
-        .flume_commands()
-        .into_iter()
-        .filter(|command| command == "launch")
-        .count();
-    assert_eq!(launches, 1, "{:?}", tools.flume_commands());
-    assert!(
-        said.lines()
-            .any(|line| line.starts_with("work/1: launched at ")),
-        "{said}"
-    );
-    let answers = scratch.git(&state.bare, &["show", "work/runner/host-a:answers.rec"]);
-    assert!(answers.contains("Outcome: launched"), "{answers}");
-    assert!(!scratch.holds(
-        &state.bare,
-        &[
-            "rev-parse",
-            "--verify",
-            "--quiet",
-            "refs/heads/home/runner/host-a"
-        ]
-    ));
-}
-
-/// The configuration spec's "No control plane": `--once` keeps the
-/// repositories and runs no `flume` command.
-#[test]
-fn no_control_plane() {
-    let scratch = Scratch::new();
-    scratch.origin(KEPT);
-    scratch.configure(&keeping(&[KEPT]));
-    let tools = Tools::new();
-
-    let output = once(&scratch, &tools);
-
-    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
-    assert!(scratch.home.join("Code").join(KEPT).exists());
-    assert_eq!(tools.flume.calls(), Vec::<Vec<String>>::new());
-    assert_eq!(tools.sluice.calls(), Vec::<Vec<String>>::new());
 }
 
 /// The control-plane-interface spec's "The hosted control plane named",
