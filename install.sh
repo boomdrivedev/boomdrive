@@ -22,7 +22,7 @@
 set -eu
 
 # The release's version, which set-version.sh writes; main gives 0.0.0.
-version=0.0.0
+version=0.36.11
 
 # Nix's own installer, at the release this file pins and its digest,
 # which Nix publishes beside it as install.sha256.
