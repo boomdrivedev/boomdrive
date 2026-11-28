@@ -216,7 +216,6 @@ fn a_preview_whose_lease_lapsed() {
 #[test]
 fn a_preview_waiting_at_sluices_bound() {
     let bench = bench();
-    bench.sluice_patience.set(std::time::Duration::from_secs(1));
     bench.sluice.waits("preview");
     let mut plane = Fake::holding(vec![preview("home/30", "main", "R1", false)]);
     let began = std::time::Instant::now();
@@ -423,7 +422,6 @@ fn a_done_of_a_preview_never_asked_for() {
 #[test]
 fn a_held_preview_put_away() {
     let bench = bench();
-    bench.sluice_patience.set(std::time::Duration::from_secs(1));
     bench.sluice.waits("preview");
     let waiting = concat!(
         r#"[{"addresses":{"web":"http://web-r1--main--repo.localhost:20000"},"#,
@@ -519,8 +517,10 @@ fn a_preview_runs_while_a_launch_runs() {
     bench
         .sluice
         .answers_preview("preview", "preview-starting.json", 0);
-    let first_call = bench.sluice.dir.path().join("call-1");
-    bench.flume.hold("a", move |_| first_call.exists());
+    let called = bench.sluice.called();
+    bench.flume.hold("a", move |_| {
+        called.load(std::sync::atomic::Ordering::SeqCst) > 0
+    });
     let mut plane = Fake::holding(vec![
         preview("home/30", "main", "R1", false),
         Want::Offer(fakes::offer("a", "a")),

@@ -18,7 +18,7 @@ use boomdrive::hello::Tools;
 use boomdrive::locks::Locks;
 use boomdrive::report::{self, ReportFile};
 use boomdrive::run::{Event, Notices};
-use boomdrive::sluice;
+use boomdrive::sluice::{self, Sluice};
 use boomdrive::terminal::Relays;
 use boomdrive_control::fake::Fake;
 use boomdrive_control::{
@@ -26,11 +26,14 @@ use boomdrive_control::{
     Report, ToolVersion, Want,
 };
 use serde_json::{json, Value};
-use std::cell::{Cell, RefCell};
-use std::collections::BTreeMap;
+use std::cell::RefCell;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
+use std::os::unix::process::ExitStatusExt;
 use std::path::{Path, PathBuf};
+use std::process::Output;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::{self, Receiver};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -841,7 +844,7 @@ pub struct Bench {
     pub flume_relay: RelayStub,
     pub dir: TempDir,
     pub flume: FakeFlume,
-    pub sluice: SluiceStub,
+    pub sluice: FakeSluice,
     /// git, for an inbox read from a clone: a test that names an inbox
     /// sets the scratch host's.
     pub git: Git,
@@ -858,10 +861,6 @@ pub struct Bench {
     /// passes as the loop keeps it.
     least: Least,
     elsewhere: Elsewhere,
-    /// How long a pass awaits sluice's ask of a preview before it
-    /// interrupts it: [`sluice::PREVIEW_PATIENCE`], but where a test sets
-    /// another.
-    pub sluice_patience: Cell<Duration>,
     notices: Notices,
     events: Receiver<Event>,
 }
@@ -883,7 +882,7 @@ impl Bench {
             flume_relay,
             dir,
             flume: FakeFlume::new(),
-            sluice: SluiceStub::new(),
+            sluice: FakeSluice::new(),
             git: Git::default(),
             clones: FakeClones::default(),
             tools: FakeTools::default(),
@@ -892,7 +891,6 @@ impl Bench {
             reach: Reach::default(),
             least: Least::default(),
             elsewhere: Elsewhere::default(),
-            sluice_patience: Cell::new(sluice::PREVIEW_PATIENCE),
             notices: Notices::new(events),
             events: received,
         };
@@ -944,16 +942,10 @@ impl Bench {
         plane: &mut dyn ControlPlane,
     ) -> (Passed, Vec<String>) {
         let control_dir = self.control_dir();
-        let sluice = self.sluice_cli();
-        let carrier = self.carrier(label, flume, &sluice, &control_dir);
+        let carrier = self.carrier(label, flume, &self.sluice, &control_dir);
         let mut lines = Vec::new();
         let passed = carrier.pass(plane, &mut |line| lines.push(line));
         (passed, lines)
-    }
-
-    /// The stub `sluice`, awaited for the bench's patience.
-    pub fn sluice_cli(&self) -> sluice::Cli {
-        sluice::Cli::new(self.sluice.program()).patient(self.sluice_patience.get())
     }
 
     /// The carrier of the part `label` over `flume` and `sluice`, its
@@ -962,7 +954,7 @@ impl Bench {
         &'a self,
         label: &'a str,
         flume: &'a dyn Flume,
-        sluice: &'a sluice::Cli,
+        sluice: &'a dyn Sluice,
         control_dir: &'a Path,
     ) -> Carrier<'a> {
         Carrier {
@@ -1221,6 +1213,190 @@ impl Stub {
 /// `<what>` being its command, or `<command>@<branch>`, each `/` of the
 /// branch written `%`, where the call names `--branch <branch>` and the
 /// test wrote `<command>@<branch>.stdout`.
+/// sluice held in memory, scripted as the stub `sluice` is and answering
+/// as it would, each answer read by `sluice::read`, as `sluice::Cli` reads
+/// sluice's output, with no process: what a bench's passes ask of sluice.
+/// A preview it is told waits is answered as the Cli answers sluice held
+/// at the host's bound once its patience ends it. The Cli's own running
+/// of sluice, its patience and its interrupt among it, is tests/sluice.rs's,
+/// over the stub.
+#[derive(Default)]
+pub struct FakeSluice {
+    state: Mutex<SluiceState>,
+    called: Arc<AtomicUsize>,
+}
+
+#[derive(Default)]
+struct SluiceState {
+    stdout: BTreeMap<String, String>,
+    stderr: BTreeMap<String, String>,
+    exits: BTreeMap<String, i32>,
+    waits: BTreeSet<String>,
+    calls: Vec<(Vec<String>, PathBuf)>,
+    unrun: Option<String>,
+}
+
+impl FakeSluice {
+    pub fn new() -> FakeSluice {
+        FakeSluice::default()
+    }
+
+    fn state(&self) -> std::sync::MutexGuard<'_, SluiceState> {
+        self.state.lock().expect("the fake sluice")
+    }
+
+    /// `what` answered with sluice 0.61.1's fixture `name` and `exit`.
+    pub fn answers(&self, what: &str, name: &str, exit: i32) {
+        self.answers_text(what, &sluice_fixture(name), exit);
+    }
+
+    /// `what` answered with sluice 0.74.3's preview fixture `name` and
+    /// `exit`.
+    pub fn answers_preview(&self, what: &str, name: &str, exit: i32) {
+        self.answers_text(what, &preview_fixture(name), exit);
+    }
+
+    /// `what` answered with `text` on standard output and `exit`.
+    pub fn answers_text(&self, what: &str, text: &str, exit: i32) {
+        let mut state = self.state();
+        state.stdout.insert(what.to_string(), text.to_string());
+        state.exits.insert(what.to_string(), exit);
+    }
+
+    /// `what` on `branch` answered with `text` and `exit`.
+    pub fn answers_on(&self, what: &str, branch: &str, text: &str, exit: i32) {
+        self.answers_text(&format!("{what}@{}", branch.replace('/', "%")), text, exit);
+    }
+
+    /// `what` held, as sluice holds a preview at the host's bound.
+    pub fn waits(&self, what: &str) {
+        self.state().waits.insert(what.to_string());
+    }
+
+    /// `what` held no more.
+    pub fn waits_no_more(&self, what: &str) {
+        self.state().waits.remove(what);
+    }
+
+    /// `what` saying `words` on standard error.
+    pub fn says(&self, what: &str, words: &str) {
+        self.state()
+            .stderr
+            .insert(what.to_string(), words.to_string());
+    }
+
+    /// Each call's arguments, in order.
+    pub fn calls(&self) -> Vec<Vec<String>> {
+        self.state()
+            .calls
+            .iter()
+            .map(|(args, _)| args.clone())
+            .collect()
+    }
+
+    /// The folder the `n`th call ran in, from 1, as `pwd -P` gives it.
+    pub fn dir_of(&self, n: usize) -> Option<PathBuf> {
+        let state = self.state();
+        state
+            .calls
+            .get(n.checked_sub(1)?)
+            .map(|(_, dir)| dir.clone())
+    }
+
+    /// How many calls were made, read where a test waits on them.
+    pub fn called(&self) -> Arc<AtomicUsize> {
+        Arc::clone(&self.called)
+    }
+
+    /// Every call answered as a sluice that cannot be run is, with
+    /// `words`.
+    pub fn unrun(&self, words: &str) {
+        self.state().unrun = Some(words.to_string());
+    }
+
+    /// Every call answered again.
+    pub fn run(&self) {
+        self.state().unrun = None;
+    }
+
+    /// The output the stub would give `args` run in `dir`, and whether it
+    /// is held.
+    fn answer(&self, dir: &Path, args: &[&str]) -> Result<(Output, bool), sluice::Unrun> {
+        let mut state = self.state();
+        let ran = dir.canonicalize().unwrap_or_else(|_| dir.to_path_buf());
+        state
+            .calls
+            .push((args.iter().map(|arg| arg.to_string()).collect(), ran));
+        self.called.fetch_add(1, Ordering::SeqCst);
+        if let Some(words) = &state.unrun {
+            return Err(sluice::Unrun(words.clone()));
+        }
+        let mut what = args[0].to_string();
+        if args.get(2) == Some(&"--branch") {
+            let on = format!("{what}@{}", args[3].replace('/', "%"));
+            if state.stdout.contains_key(&on) {
+                what = on;
+            }
+        }
+        let held = state.waits.contains(&what);
+        let output = Output {
+            status: std::process::ExitStatus::from_raw(
+                state.exits.get(&what).copied().unwrap_or(0) << 8,
+            ),
+            stdout: state
+                .stdout
+                .get(&what)
+                .cloned()
+                .unwrap_or_default()
+                .into_bytes(),
+            stderr: state
+                .stderr
+                .get(&what)
+                .cloned()
+                .unwrap_or_default()
+                .into_bytes(),
+        };
+        Ok((output, held))
+    }
+}
+
+impl Sluice for FakeSluice {
+    fn entry(
+        &self,
+        container_dir: &Path,
+        id: &str,
+        branch: &str,
+    ) -> Result<sluice::Reply, sluice::Unrun> {
+        let (output, _) =
+            self.answer(container_dir, &["status", id, "--branch", branch, "--json"])?;
+        sluice::read(&output)
+    }
+
+    fn preview(
+        &self,
+        container_dir: &Path,
+        branch: &str,
+        revision: &str,
+    ) -> Result<sluice::Asked, sluice::Unrun> {
+        let (output, held) =
+            self.answer(container_dir, &["preview", branch, revision, "--json"])?;
+        if held {
+            return Ok(sluice::Asked::Waiting);
+        }
+        sluice::read(&output).map(sluice::Asked::Replied)
+    }
+
+    fn previews(&self, container_dir: &Path) -> Result<sluice::Reply, sluice::Unrun> {
+        let (output, _) = self.answer(container_dir, &["previews", "--json"])?;
+        sluice::read(&output)
+    }
+
+    fn release(&self, container_dir: &Path, name: &str) -> Result<sluice::Reply, sluice::Unrun> {
+        let (output, _) = self.answer(container_dir, &["release", name, "--json"])?;
+        sluice::read(&output)
+    }
+}
+
 const SLUICE: &str = r#"#!/bin/sh
 dir=$(dirname "$0")
 n=1
