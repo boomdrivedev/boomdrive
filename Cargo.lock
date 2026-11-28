@@ -146,7 +146,7 @@ dependencies = [
 
 [[package]]
 name = "boomdrive"
-version = "0.0.0"
+version = "0.36.6"
 dependencies = [
  "base64 0.22.1",
  "boomdrive-control",
@@ -178,7 +178,7 @@ dependencies = [
 
 [[package]]
 name = "boomdrive-control"
-version = "0.0.0"
+version = "0.36.6"
 dependencies = [
  "serde",
  "serde_json",
@@ -187,7 +187,7 @@ dependencies = [
 
 [[package]]
 name = "boomdrive-crew"
-version = "0.0.0"
+version = "0.36.6"
 dependencies = [
  "boomdrive-control",
  "serde_json",
@@ -201,7 +201,7 @@ dependencies = [
 
 [[package]]
 name = "boomdrive-hosted"
-version = "0.0.0"
+version = "0.36.6"
 dependencies = [
  "base64 0.22.1",
  "boomdrive-control",
