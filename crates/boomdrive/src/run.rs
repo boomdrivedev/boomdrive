@@ -664,21 +664,24 @@ impl Runner {
     /// Carries the work of the parts `open` makes, handed the wake of
     /// each part by its label as an implementation's opener is, in place
     /// of the implementation the configuration names, at the poll
-    /// interval it names, running `programs`: how a test runs the runner
-    /// over control planes and tools of its own. Refused where the
-    /// configuration names no control plane.
+    /// interval it names: how a test runs the runner over control planes
+    /// of its own. Refused where the configuration names no control plane.
     pub fn carry_for(
         &mut self,
         open: impl FnOnce(&dyn Fn(&str) -> Wake) -> Vec<Part>,
-        programs: Programs,
     ) -> Result<(), String> {
         let bells = self.bells.clone();
         let Some(control) = &mut self.control else {
             return Err("the configuration names no control plane".to_string());
         };
         control.parts = Ok(open(&|label| bells.waker(label)));
-        self.tools(programs);
         Ok(())
+    }
+
+    /// Runs the tools `toolset` gives in place of each tool's own command
+    /// line: how a test runs the runner over tools held in memory.
+    pub fn toolset(&mut self, toolset: Box<dyn Toolset>) {
+        self.toolset = toolset;
     }
 
     /// Runs `programs` in place of those on the host's `PATH`: how a test
