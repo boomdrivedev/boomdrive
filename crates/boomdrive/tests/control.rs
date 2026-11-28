@@ -1,41 +1,27 @@
-//! `boomdrive run` carrying a control plane's work (design Decisions 4, 5
-//! and 13, and Decision 2 of the change
-//! each-partition-the-runner-serves-runs-on-its-own): `--once` makes one
-//! keeping pass and one control pass of each part side by side, and each
-//! part is carried on a thread of its own, its control passes on a timer
-//! of their own, hastened by no lapsed lease and after no pass that did
-//! not report, at once when its implementation wakes it, and none that
-//! acts while the configuration does not read, saying its control plane
-//! unread once until it is read again, waiting on no other part and on no
-//! keeping pass (the running spec's "Each part of the control plane is
-//! carried on its own", "boomdrive run --once makes one pass", "boomdrive
-//! run makes control passes on a timer of their own", "A control pass
-//! runs at once when its control plane wakes the runner", "A control pass
-//! after a broken configuration acts on nothing" and "A control plane
-//! that cannot be read is said once until it is read again"; the
-//! configuration spec's "The configuration may name the control plane"
-//! and "The control-plane table is read when the runner starts"). The
-//! binary runs under the scratch host with stub `flume`, `sluice` and
-//! `systemd-creds` first on its `PATH`, crew's implementation
-//! reaches the scratch forge's state repository through the scratch git
-//! configuration, and the hosted implementation a loopback port with
-//! nothing on it. The runner runs in-process over the fake control plane
-//! and control planes of the test's own, its parts `home` and `work`.
+//! `boomdrive run` carrying a control plane's work end to end (design
+//! Decisions 4, 5 and 13): `--once` over crew's implementation and a
+//! scratch state repository, a control plane that cannot be read or could
+//! not be opened, a hosted control plane named and one beside crew's, and
+//! a stop with a part's read in flight, each run as the binary; and the
+//! runner's one subscription to a stub flume host, the contract with
+//! Flume's resident: the passes read the subscription, a change heard
+//! wakes the parts, and flume host stopping and coming back is said once
+//! each way. The binary runs under the scratch host with stub `flume`,
+//! `sluice` and `systemd-creds` first on its `PATH`. The loop's logic, its
+//! parts' timers, wakes and reach, is proven on a paused clock with no
+//! process in `parts.rs` (logic-is-tested-as-units-and-few-tests-run-the-
+//! binary).
 
 mod common;
 mod fakes;
 #[path = "../../boomdrive-crew/tests/common/mod.rs"]
 mod records;
 
-use boomdrive::report;
 use boomdrive::run::{Programs, Runner, Stopper};
 use boomdrive_control::fake::Fake;
-use boomdrive_control::{
-    Answer, At, ControlPlane, Hello, Id, Lease, Outcome, Part, Pulled, Report, Reported, Unread,
-    Unsent, Want,
-};
+use boomdrive_control::{ControlPlane, Hello, Id, Part, Pulled, Report, Reported, Unread, Unsent};
 use common::{keeping, Origin, Scratch};
-use fakes::{offer, CredsStub, HeldFetch, SluiceStub, Stub, StubHost};
+use fakes::{CredsStub, SluiceStub, Stub, StubHost};
 use std::ffi::{OsStr, OsString};
 use std::process::Output;
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -138,11 +124,6 @@ fn once(scratch: &Scratch, tools: &Tools) -> Output {
 
 fn stderr(output: &Output) -> String {
     String::from_utf8_lossy(&output.stderr).into_owned()
-}
-
-/// `words` as a call's arguments.
-fn words(words: &[&str]) -> Vec<String> {
-    words.iter().map(|word| word.to_string()).collect()
 }
 
 /// How many settles the stub `flume` was asked, which the runner never
@@ -500,7 +481,6 @@ struct Told {
     /// fake is asked.
     unread: usize,
     pulls: Sender<Instant>,
-    reports: Sender<Instant>,
 }
 
 impl ControlPlane for Told {
@@ -514,9 +494,7 @@ impl ControlPlane for Told {
     }
 
     fn report(&mut self, report: &Report) -> Result<Reported, Unsent> {
-        let reported = self.fake.report(report)?;
-        let _ = self.reports.send(Instant::now());
-        Ok(reported)
+        self.fake.report(report)
     }
 
     fn owns(&self, id: &Id) -> bool {
@@ -531,7 +509,6 @@ impl ControlPlane for Told {
 /// What a test hears of one part's control plane.
 struct Heard {
     pulls: Receiver<Instant>,
-    reports: Receiver<Instant>,
 }
 
 impl Heard {
@@ -546,44 +523,19 @@ impl Heard {
     fn pulled_within(&self, wait: Duration) -> bool {
         self.pulls.recv_timeout(wait).is_ok()
     }
-
-    /// When the next report is taken; panics where none is in time.
-    fn report(&self) -> Instant {
-        self.reports
-            .recv_timeout(PATIENCE)
-            .expect("a report taken in time")
-    }
 }
 
 /// `fake` as a part's control plane, its first `unread` pulls refused
 /// with `no network`, and what the test hears of it.
 fn told(fake: Fake, unread: usize) -> (Box<dyn ControlPlane + Send>, Heard) {
     let (pulls, pulled) = mpsc::channel();
-    let (reports, reported) = mpsc::channel();
     let plane = Told {
         fake,
         unread,
         pulls,
-        reports,
     };
-    let heard = Heard {
-        pulls: pulled,
-        reports: reported,
-    };
+    let heard = Heard { pulls: pulled };
     (Box::new(plane), heard)
-}
-
-/// The fake control plane of the part `label`, owning the ids under
-/// `<label>/` alone, holding `wants`.
-fn part_holding(label: &str, wants: Vec<Want>) -> Fake {
-    let mut fake = Fake::owning(&format!("{label}/"));
-    fake.set_wants(wants);
-    fake
-}
-
-/// An offer of a launch into [`KEPT`] with the id `id`, naming no stream.
-fn launch(id: &str) -> Want {
-    Want::Offer(offer(id, id.rsplit('/').next().unwrap_or(id)))
 }
 
 /// The runner, running in a thread of the test's, carrying parts of the
@@ -688,12 +640,6 @@ impl Running {
         self.home().pulled_within(wait)
     }
 
-    /// When `line` is said, the lines said before it since the last read;
-    /// panics where it is not said in time.
-    fn until(&self, line: &str) -> (Instant, Vec<String>) {
-        self.until_one(|said| said == line, line)
-    }
-
     /// When a line starting `start` is said, that line and the lines said
     /// before it since the last read; panics where none is said in time.
     fn until_starting(&self, start: &str) -> (Instant, String, Vec<String>) {
@@ -711,35 +657,6 @@ impl Running {
         panic!("no line starting {start:?} said in time; said: {said:#?}");
     }
 
-    fn until_one(&self, is: impl Fn(&str) -> bool, what: &str) -> (Instant, Vec<String>) {
-        let deadline = Instant::now() + PATIENCE;
-        let mut said = Vec::new();
-        while let Ok((at, next)) = self
-            .lines
-            .recv_timeout(deadline.saturating_duration_since(Instant::now()))
-        {
-            if is(&next) {
-                return (at, said);
-            }
-            said.push(next);
-        }
-        panic!("{what:?} not said in time; said: {said:#?}");
-    }
-
-    /// Waits until the stub `millpond` has been asked `ticks` ticks;
-    /// panics where it is not in time.
-    fn ticked(&self, ticks: usize) {
-        let deadline = Instant::now() + PATIENCE;
-        while self.tools.millpond.calls().len() < ticks {
-            assert!(
-                Instant::now() < deadline,
-                "{ticks} ticks not run in time: {:?}",
-                self.tools.millpond.calls()
-            );
-            thread::sleep(Duration::from_millis(20));
-        }
-    }
-
     /// Stops the runner, and gives the lines said from the last read, its
     /// stop the last, each with when it was said.
     fn stop(self) -> Vec<(Instant, String)> {
@@ -747,51 +664,6 @@ impl Running {
         self.thread.join().expect("the runner ends");
         self.lines.try_iter().collect()
     }
-}
-
-/// The line said when a pass makes [`KEPT`]'s view at `commit`.
-fn view_made(scratch: &Scratch, commit: &str) -> String {
-    format!(
-        "{KEPT}: view made at {}, at origin/main {}",
-        scratch.home.join("Code").join(KEPT).display(),
-        &commit[..7]
-    )
-}
-
-/// Writes `text` as the configuration by one rename, so the running
-/// runner never reads it half written.
-fn rewrite(scratch: &Scratch, text: &str) {
-    let file = scratch.config_file();
-    let next = file.with_extension("next");
-    std::fs::write(&next, text).expect("the configuration written");
-    std::fs::rename(&next, &file).expect("the configuration in place");
-}
-
-/// The running spec's "Passes back to back share their ticks": the first
-/// keeping pass and the first control pass run back to back, and one tick
-/// of the inbox `home` follows them; no other runs before the next turn,
-/// an hour on, and Flume is asked for no settle.
-#[test]
-fn passes_back_to_back_share_their_ticks() {
-    let scratch = Scratch::new();
-    scratch.origin(KEPT);
-    scratch.configure(&format!("inboxes = [\"home\"]\n{}", carrying("1h", "1h")));
-    let running = Running::start(&scratch);
-    running.pull();
-    running.ticked(1);
-    thread::sleep(Duration::from_millis(500));
-
-    assert_eq!(
-        running.tools.millpond.calls(),
-        [words(&["tick", "--inbox", "home", "--json"])]
-    );
-    assert_eq!(
-        settles(&running.tools),
-        0,
-        "{:?}",
-        running.tools.flume_commands()
-    );
-    running.stop();
 }
 
 /// The running spec's "A control pass runs no settle" and "Passes read
@@ -884,204 +756,4 @@ fn flume_host_stops_and_comes_back() {
         "said twice: {between:?}"
     );
     running.stop();
-}
-
-/// The running spec's "The configuration broken while running": `home`'s
-/// next control pass names the file and acts on nothing, and once the file
-/// is valid again, the pass after acts as before.
-#[test]
-fn the_configuration_broken_while_running() {
-    let scratch = Scratch::new();
-    scratch.origin(KEPT);
-    let valid = carrying("1h", "1s");
-    scratch.configure(&valid);
-    let running = Running::start(&scratch);
-    running.pull();
-
-    rewrite(&scratch, &valid.replace(&format!("{KEPT:?}"), "\"flume\""));
-    let broken = format!(
-        "boomdrive: home: {}:2: `accounts.own.drives.home.repositories` entry \"flume\": an \
-         address is `owner/name`: nothing carried this pass",
-        scratch.config_file().display()
-    );
-    running.until(&broken);
-    // A pull begun before the file broke may be told of; none after.
-    running.home().pulls.try_iter().for_each(drop);
-    running.until(&broken);
-    assert_eq!(
-        running.home().pulls.try_iter().count(),
-        0,
-        "no pull while the file does not read"
-    );
-
-    rewrite(&scratch, &valid);
-    running.pull();
-    running.stop();
-}
-
-/// The configuration spec's "A poll interval changed while running": the
-/// control passes keep the interval the runner started with.
-#[test]
-fn a_poll_interval_changed_while_running() {
-    let scratch = Scratch::new();
-    scratch.origin(KEPT);
-    scratch.configure(&carrying("1h", "1s"));
-    let running = Running::start(&scratch);
-    running.pull();
-
-    rewrite(&scratch, &carrying("1h", "5m"));
-    running.pull();
-    running.pull();
-    running.stop();
-}
-
-/// The running spec's "A lapsed lease", over the runner: the report file
-/// holds a launch under a lease that lapsed, and the control plane cannot
-/// be reached, so the next control pass comes `poll_interval` after the
-/// one before, never back to back.
-#[test]
-fn a_lapsed_lease_sets_no_pass_sooner() {
-    let scratch = Scratch::new();
-    scratch.origin(KEPT);
-    scratch.configure(&carrying("1h", "2s"));
-    holding(
-        &scratch,
-        "held",
-        At::from(At::now().time() - Duration::from_secs(60)),
-    );
-    let mut fake = Fake::new();
-    fake.refuse_pulls("no network");
-    let running = Running::over(&scratch, fake, 0);
-
-    let first = running.pull();
-    let second = running.pull();
-
-    // A pull comes partway into its pass; passes two seconds apart hold
-    // their pulls more than a second apart, where back to back they come
-    // within the pass's own time.
-    assert!(
-        second - first >= Duration::from_secs(1),
-        "{:?} between control passes",
-        second - first
-    );
-    running.stop();
-}
-
-/// The running spec's "A pass that did not report", over the runner: the
-/// report file holds a launch under a lease that lapses in seconds, and
-/// the control plane takes no report, so no pass is made sooner than
-/// `poll_interval`, an hour.
-#[test]
-fn a_pass_that_did_not_report_sets_no_pass_sooner() {
-    let scratch = Scratch::new();
-    scratch.origin(KEPT);
-    scratch.configure(&carrying("1h", "1h"));
-    holding(
-        &scratch,
-        "held",
-        At::from(At::now().time() + Duration::from_secs(5)),
-    );
-    let mut fake = Fake::new();
-    fake.refuse_reports("no network");
-    let running = Running::over(&scratch, fake, 0);
-
-    running.pull();
-
-    // Hastened by the lease, the next pass would come within half the
-    // time it has left, two and a half seconds.
-    assert!(
-        !running.pulled_within(Duration::from_secs(4)),
-        "a pass that did not report hastens none"
-    );
-    running.stop();
-}
-
-/// The running spec's "Each part on its own timer": `work` holds a lease
-/// expiring seconds after a pass of `work` that reported, so `work`'s next
-/// pass comes by the midpoint of the time left, and `home`'s keeps its
-/// own `poll_interval`.
-#[test]
-fn each_part_on_its_own_timer() {
-    let scratch = Scratch::new();
-    scratch.origin(KEPT);
-    scratch.configure(&carrying("1h", "8s"));
-    holding(
-        &scratch,
-        "work/held",
-        At::from(At::now().time() + Duration::from_secs(8)),
-    );
-    let (home, home_heard) = told(Fake::owning("home/"), 0);
-    let (work, work_heard) = told(Fake::owning("work/"), 0);
-    let running = Running::carrying(&scratch, vec![("home", home), ("work", work)], Tools::new());
-
-    let home_first = home_heard.pull();
-    let work_first = work_heard.pull();
-    let work_second = work_heard.pull();
-    let home_second = home_heard.pull();
-
-    let work_apart = work_second - work_first;
-    assert!(
-        work_apart < Duration::from_secs(6),
-        "{work_apart:?} between work's passes, hastened by its lease"
-    );
-    let home_apart = home_second - home_first;
-    assert!(
-        home_apart >= Duration::from_secs(7),
-        "{home_apart:?} between home's passes, its own poll_interval"
-    );
-    running.stop();
-}
-
-/// The running spec's "A keeping pass under way": a keeping pass's fetch
-/// of [`KEPT`] is held, and `work`'s control passes fall due meanwhile:
-/// they pull, answer and report while the fetch is held.
-#[test]
-fn a_keeping_pass_under_way() {
-    let scratch = Scratch::new();
-    let origin = scratch.origin(KEPT);
-    scratch.configure(&carrying("3s", "1s"));
-    let held = HeldFetch::new(&scratch.gitconfig, KEPT);
-    let tools = Tools::new();
-    tools.flume.answers("launch", "launch.json", 0);
-    let (work, work_heard) = told(part_holding("work", vec![launch("work/1")]), 0);
-    let running = Running::carrying(&scratch, vec![("work", work)], tools);
-    running.until(&view_made(&scratch, &origin.tip("main")));
-    // `work/1` is launched before the fetch is held: a launch into the
-    // clone waits on its keep (core.49; record 0026), so one made after
-    // the hold would keep `work`'s pass waiting until the fetch ends.
-    running.until_starting("work/1: launched at ");
-    held.hold();
-    held.wait_held(PATIENCE);
-    // Every pull and report the test has heard of may have come before
-    // the fetch was held; those that come now come while it is held.
-    work_heard.pulls.try_iter().for_each(drop);
-    work_heard.reports.try_iter().for_each(drop);
-
-    work_heard.pull();
-    work_heard.report();
-    work_heard.pull();
-    work_heard.report();
-
-    held.let_go();
-    running.stop();
-}
-
-/// Writes the runner's report file on the scratch host, holding launch
-/// `id` at a place under lease 1, expiring at `expires`.
-fn holding(scratch: &Scratch, id: &str, expires: At) {
-    let mut held = Report::default();
-    let lease = Lease {
-        number: 1,
-        expires: Some(expires),
-    };
-    let answer = Answer {
-        outcome: Outcome::Launched,
-        place_dir: Some("/places/held".to_string()),
-        words: None,
-        at: At::now(),
-    };
-    held.answer(&Id::new(id), lease, answer);
-    let control_dir = report::control_dir(&scratch.data());
-    std::fs::create_dir_all(&control_dir).expect("the control directory");
-    report::save(&report::file(&control_dir), &held).expect("the report saved");
 }
