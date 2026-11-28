@@ -18,7 +18,8 @@ use boomdrive_control::{
 };
 use fakes::{act, offer, place_of, Bench, Call, KEPT};
 use std::collections::BTreeMap;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use tokio::time::Instant;
 
 /// The poll interval the loop's timing is read at.
 const MINUTE: Duration = Duration::from_secs(60);

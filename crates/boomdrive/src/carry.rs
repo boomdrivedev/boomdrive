@@ -64,7 +64,8 @@ use serde_json::Value;
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use tokio::time::Instant;
 
 /// How the runner keeps the repository a launch names.
 #[derive(Clone, Debug, PartialEq, Eq)]

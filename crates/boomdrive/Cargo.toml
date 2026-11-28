@@ -68,6 +68,11 @@ weir-signals.workspace = true
 # by weir's crate (weir record 0008; record 0042 as amended on 2026-11-11;
 # core.58).
 weir-bounded.workspace = true
+# The runner's edge: the runtime `main` chooses, whose clock and timers
+# every wait of the loop and of each part's thread is on, its passes
+# synchronous on the runner's threads
+# (a-residents-core-stays-synchronous-behind-a-tokio-edge).
+tokio.workspace = true
 
 [dev-dependencies]
 # The tests' key for the App, made at run time, since no key is committed
