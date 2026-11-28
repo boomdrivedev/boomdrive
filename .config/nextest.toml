@@ -1,0 +1,11 @@
+# cargo-nextest, which runs each crate's test task
+# (each-tools-tests-run-under-cargo-nextest;
+# a-leaked-child-fails-its-test). Each test runs in a process of its own.
+# A test that leaves a process holding its output half a second after it
+# ends is reported as leaky. It does not fail for that: on macOS, nextest
+# sees a test's output pipe that another test process inherited when
+# nextest started the two at once, as sluice's tree found. The tests'
+# own guards, such as the residents' and the runner's stop, end what
+# each test starts.
+[profile.default]
+leak-timeout = { period = "500ms", result = "pass" }

@@ -22,7 +22,7 @@ tasks:
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
   test:
-    command: 'cargo test -p boomdrive-control'
-    inputs: ['/crates/boomdrive-control/**/*', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
+    command: 'cargo nextest run -p boomdrive-control'
+    inputs: ['/crates/boomdrive-control/**/*', '/.config/nextest.toml', '/Cargo.toml', '/Cargo.lock', '/devenv.nix', '/devenv.lock', '/.prototools', '/rust-toolchain.toml']
     tags: [check-fast]
     options: {runFromWorkspaceRoot: true}
