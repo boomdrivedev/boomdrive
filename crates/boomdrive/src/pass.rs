@@ -896,16 +896,20 @@ fn clear_partials(data: &Path, clones: &[Found], say: &mut dyn FnMut(String)) ->
 /// revised; design Decision 1). These read the configuration and the
 /// files at the repository root, and a pass over drives that keep no
 /// repository, so none runs git (logic-is-tested-as-units-and-few-tests-
-/// run-the-binary); `tests/code_workspaces.rs` keeps the two whose clones
-/// record their drives.
+/// run-the-binary); `tests/code_workspaces.rs` and
+/// `tests/drive_workspaces.rs` keep those whose clones record their
+/// drives in git. A departed drive's workspace is taken here from the
+/// clones a pass found, as `clone::find` gives them.
 #[cfg(test)]
 mod workspaces {
-    use super::{keep_workspaces, pass, wanted_workspaces, Outcome};
-    use crate::config::{self, Config};
+    use super::{keep_workspaces, pass, take_departed, wanted_workspaces, Outcome};
+    use crate::clone::Found;
+    use crate::config::{self, Address, Config};
     use crate::forge::Forge;
     use crate::git::Git;
     use crate::locks::Locks;
     use serde_json::{json, Value};
+    use std::collections::BTreeSet;
     use std::ffi::OsStr;
     use std::fs;
     use std::os::unix::fs::{MetadataExt, PermissionsExt};
@@ -957,14 +961,17 @@ mod workspaces {
     }
 
     /// A configuration keeping each of `kept`'s drives of the account
-    /// `own` with its addresses, in order, asking for the workspaces
-    /// where `asks`.
+    /// `own` with its addresses, in order, and none where `kept` names
+    /// none, asking for the workspaces where `asks`.
     fn drives(asks: bool, kept: &[(&str, &[&str])]) -> String {
         let mut text = if asks {
             "code_workspaces = true\n".to_string()
         } else {
             String::new()
         };
+        if kept.is_empty() {
+            text.push_str("accounts.own.drives = {}\n");
+        }
         for (drive, addresses) in kept {
             let entries: Vec<String> = addresses.iter().map(|a| format!("{a:?}")).collect();
             text.push_str(&format!(
@@ -1380,5 +1387,100 @@ mod workspaces {
 
         assert_eq!(lines, [] as [String; 0]);
         assert_eq!(workspaces_under(home.path()), [] as [PathBuf; 0]);
+    }
+
+    /// The clone of `agentplot/flume` as a pass found it, recording the
+    /// drive `drive`.
+    fn recording(home: &Home, drive: &str) -> Found {
+        Found {
+            address: Address::parse("agentplot/flume").expect("an address"),
+            container: home
+                .path()
+                .join(".local/share/boomdrive/repositories/agentplot/flume"),
+            drive: Some(drive.to_string()),
+        }
+    }
+
+    /// The departed drives' workspaces taken, as a pass's end takes them,
+    /// of the clones `clones` found and the drives `standing` their
+    /// keeping recorded.
+    fn take(config: &Config, clones: &[Found], standing: &[&str]) -> (Outcome, Vec<String>) {
+        let standing: BTreeSet<String> = standing.iter().map(|drive| drive.to_string()).collect();
+        let mut lines = Vec::new();
+        let outcome = take_departed(config, clones, &standing, &mut |line| lines.push(line));
+        (outcome, lines)
+    }
+
+    /// The line a pass says when it removes the workspace `file` of the
+    /// departed drive `drive`.
+    fn taken(file: &Path, drive: &str) -> String {
+        format!(
+            "boomdrive: workspace removed at {}: its drive {drive} has left the configuration",
+            file.display()
+        )
+    }
+
+    /// The views spec's "A workspace of the person's own": the departed
+    /// drive's workspace goes, and one no clone's drive names is left.
+    #[test]
+    fn a_workspace_of_the_persons_own() {
+        let home = Home::new();
+        keep(&home.config(&asking(&["agentplot/flume"])));
+        let notes = home.workspace("notes");
+        let theirs = "{\"folders\": [{\"path\": \"agentplot/flume\"}], \"settings\": {}}\n";
+        fs::write(&notes, theirs).expect("a workspace of the person's");
+        let config = home.config(&drives(true, &[]));
+
+        let (outcome, lines) = take(&config, &[recording(&home, "home")], &[]);
+
+        assert_eq!(outcome, Outcome::Kept);
+        assert_eq!(lines, [taken(&home.workspace("home"), "home")]);
+        assert!(!home.workspace("home").exists(), "the workspace is left");
+        assert_eq!(fs::read_to_string(&notes).expect("the person's"), theirs);
+    }
+
+    /// The views spec's "A departed drive's workspace the runner cannot
+    /// read": left as it is and named, its words never quoted.
+    #[test]
+    fn a_departed_drives_workspace_the_runner_cannot_read() {
+        let home = Home::new();
+        let file = home.workspace("home");
+        fs::create_dir_all(file.parent().expect("the root")).expect("the repository root");
+        let mine = "{\n\t// mine\n\t\"folders\": []\n}\n";
+        fs::write(&file, mine).expect("a comment of the person's");
+        let config = home.config(&drives(true, &[]));
+
+        let (outcome, lines) = take(&config, &[recording(&home, "home")], &[]);
+
+        assert_eq!(outcome, Outcome::Kept);
+        assert_eq!(lines.len(), 1, "{lines:#?}");
+        let prefix = format!("{}it is not JSON the runner reads: ", left(&file));
+        assert!(lines[0].starts_with(&prefix), "{lines:#?}");
+        assert!(!lines[0].contains("mine"), "{lines:#?}");
+        assert_eq!(fs::read_to_string(&file).expect("the workspace"), mine);
+    }
+
+    /// The views spec's "Its repositories moved": the drive's one
+    /// repository is named by another drive, so its clone, found
+    /// recording the departed drive, records the other once kept, and the
+    /// departed drive's workspace goes.
+    #[test]
+    fn its_repositories_moved() {
+        let home = Home::new();
+        keep(&home.config(&asking(&["agentplot/flume"])));
+        let config = home.config(&drives(true, &[("work", &["agentplot/flume"])]));
+
+        let (kept, written_lines) = keep(&config);
+        let (outcome, lines) = take(&config, &[recording(&home, "home")], &["work"]);
+
+        let work = home.workspace("work");
+        assert_eq!((kept, outcome), (Outcome::Kept, Outcome::Kept));
+        assert_eq!(written_lines, [written(&work, "agentplot/flume")]);
+        assert_eq!(lines, [taken(&home.workspace("home"), "home")]);
+        assert!(!home.workspace("home").exists(), "the workspace is left");
+        assert_eq!(
+            json(&work),
+            json!({"folders": [{"path": "agentplot/flume"}], "settings": {}})
+        );
     }
 }

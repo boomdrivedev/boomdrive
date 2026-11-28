@@ -4,14 +4,16 @@
 //! drive the configuration names it under, and once a drive has left the
 //! configuration and no clone the runner holds records it, the pass
 //! removes the drive's workspace at the repository root, and no other.
+//! These are the cases whose clones record their drives in git; which
+//! workspace a pass takes of the clones it found is proven by units in
+//! `src/pass.rs` (logic-is-tested-as-units-and-few-tests-run-the-binary).
 
 mod common;
 
 use boomdrive::pass::Outcome;
 use common::{drives, keeping, Scratch};
-use serde_json::{json, Value};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 /// The drive the clone of `address` records, `boomdrive.drive` in its
 /// bare repository's own configuration.
@@ -125,80 +127,6 @@ fn a_view_still_holding_work() {
     assert!(!file.exists(), "the workspace is left");
 }
 
-/// The views spec's "Its repositories moved": the drive's one repository
-/// is named by another drive, so its clone records that one and the
-/// departed drive's workspace goes.
-#[test]
-fn its_repositories_moved() {
-    let scratch = Scratch::new();
-    let view = kept_in_home(&scratch);
-    let put = scratch.git(&view, &["rev-parse", "HEAD"]);
-
-    let (outcome, lines) = scratch.pass(&asking_for(&[("work", &["agentplot/flume"])]));
-
-    let work = workspace(&scratch, "work");
-    assert_eq!(outcome, Outcome::Kept);
-    assert_eq!(
-        lines,
-        [
-            format!(
-                "boomdrive: workspace written at {}: agentplot/flume",
-                work.display()
-            ),
-            taken(&scratch, "home"),
-        ]
-    );
-    assert!(
-        !workspace(&scratch, "home").exists(),
-        "the workspace is left"
-    );
-    assert_eq!(
-        json(&work),
-        json!({"folders": [{"path": "agentplot/flume"}], "settings": {}})
-    );
-    assert_eq!(scratch.git(&view, &["rev-parse", "HEAD"]), put);
-}
-
-/// The views spec's "A workspace of the person's own".
-#[test]
-fn a_workspace_of_the_persons_own() {
-    let scratch = Scratch::new();
-    kept_in_home(&scratch);
-    let notes = workspace(&scratch, "notes");
-    let theirs = "{\"folders\": [{\"path\": \"agentplot/flume\"}], \"settings\": {}}\n";
-    fs::write(&notes, theirs).expect("a workspace of the person's");
-
-    let (outcome, lines) = scratch.pass(&asking_for(&[]));
-
-    assert_eq!(outcome, Outcome::Kept);
-    assert_eq!(lines, [REMOVED.to_string(), taken(&scratch, "home")]);
-    assert_eq!(fs::read_to_string(&notes).expect("the person's"), theirs);
-}
-
-/// The views spec's "A departed drive's workspace the runner cannot
-/// read".
-#[test]
-fn a_departed_drives_workspace_the_runner_cannot_read() {
-    let scratch = Scratch::new();
-    kept_in_home(&scratch);
-    let file = workspace(&scratch, "home");
-    let mine = "{\n\t// mine\n\t\"folders\": []\n}\n";
-    fs::write(&file, mine).expect("a comment of the person's");
-
-    let (outcome, lines) = scratch.pass(&asking_for(&[]));
-
-    assert_eq!(outcome, Outcome::Kept);
-    assert_eq!(lines.len(), 2, "{lines:#?}");
-    assert_eq!(lines[0], REMOVED);
-    let left = format!(
-        "boomdrive: workspace left at {}: it is not JSON the runner reads: ",
-        file.display()
-    );
-    assert!(lines[1].starts_with(&left), "{lines:#?}");
-    assert!(!lines[1].contains("mine"), "{lines:#?}");
-    assert_eq!(fs::read_to_string(&file).expect("the workspace"), mine);
-}
-
 /// The views spec's "A departed drive's workspace not asked for".
 #[test]
 fn a_departed_drives_workspace_not_asked_for() {
@@ -217,9 +145,4 @@ fn a_departed_drives_workspace_not_asked_for() {
         "the clone is left"
     );
     assert_eq!(fs::read(&file).expect("the workspace"), before);
-}
-
-/// The JSON the file at `path` holds.
-fn json(path: &Path) -> Value {
-    serde_json::from_slice(&fs::read(path).expect("the workspace")).expect("JSON")
 }
