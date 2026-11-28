@@ -686,14 +686,13 @@ fn two_parts_launch_into_one_clone_at_once() {
     let open = Arc::new(AtomicBool::new(false));
     let opened = Arc::clone(&open);
     home.flume.hold("a", move |_| opened.load(Ordering::SeqCst));
-    let sluice = home.sluice_cli();
     let control_dir = home.control_dir();
-    let carrier = home.carrier("home", &home.flume, &sluice, &control_dir);
+    let carrier = home.carrier("home", &home.flume, &home.sluice, &control_dir);
     let (rang, woke) = mpsc::channel();
     let wake = move || {
         let _ = rang.send(());
     };
-    boomdrive::hands::carried(&home.flume, &sluice, &home.locks, &wake, |underway| {
+    boomdrive::hands::carried(&home.flume, &home.sluice, &home.locks, &wake, |underway| {
         carrier.carry_pass(&mut home_plane, underway, &mut |_| {});
         // home's `flume launch` is running, and holds the clone's lock.
         while !home.flume.launches().iter().any(|args| args.name == "a") {

@@ -397,7 +397,9 @@ fn the_same_number_on_another_branch_is_read() {
 fn a_sluice_not_there() {
     let (bench, mut plane) = launched();
     submitted(&bench, "1");
-    fs::remove_file(bench.sluice.program()).unwrap();
+    bench
+        .sluice
+        .unrun("sluice could not run: No such file or directory (os error 2)");
     let (passed, lines) = bench.pass(&mut plane);
     assert!(passed.reported);
     assert_eq!(lines.len(), 1, "{lines:?}");
@@ -409,7 +411,7 @@ fn a_sluice_not_there() {
     );
     assert_eq!(entry(&bench), None);
     bench.sluice.answers("status", "status-landed.json", 0);
-    fs::copy(fakes::SluiceStub::new().program(), bench.sluice.program()).unwrap();
+    bench.sluice.run();
     let (passed, _) = bench.pass(&mut plane);
     assert!(passed.reported);
     assert!(entry(&bench).is_some(), "sluice is asked again");

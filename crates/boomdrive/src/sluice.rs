@@ -239,8 +239,10 @@ struct Error {
     message: String,
 }
 
-/// sluice's answer, read by its exit, or none where a signal ended it.
-fn read(output: &Output) -> Result<Reply, Unrun> {
+/// sluice's answer, read by its exit, or none where a signal ended it:
+/// how [`Cli`] reads each command's output, and how a test's sluice in
+/// memory reads the answers it is given.
+pub fn read(output: &Output) -> Result<Reply, Unrun> {
     let code = exit(output)?;
     let printed = std::str::from_utf8(&output.stdout).ok();
     Ok(match (code, printed) {

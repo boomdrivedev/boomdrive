@@ -95,20 +95,25 @@ impl Part<'_> {
 
 /// Runs `body` with `bench`'s part carried across its passes.
 fn carried(bench: &Bench, body: impl FnOnce(&Part)) {
-    let sluice = bench.sluice_cli();
     let control_dir = bench.control_dir();
-    let carrier = bench.carrier(PART, &bench.flume, &sluice, &control_dir);
+    let carrier = bench.carrier(PART, &bench.flume, &bench.sluice, &control_dir);
     let (rang, woke) = mpsc::channel();
     let wake = move || {
         let _ = rang.send(());
     };
-    hands::carried(&bench.flume, &sluice, &bench.locks, &wake, |underway| {
-        body(&Part {
-            carrier: &carrier,
-            underway,
-            woke: &woke,
-        });
-    });
+    hands::carried(
+        &bench.flume,
+        &bench.sluice,
+        &bench.locks,
+        &wake,
+        |underway| {
+            body(&Part {
+                carrier: &carrier,
+                underway,
+                woke: &woke,
+            });
+        },
+    );
 }
 
 /// The work-into-flume spec's "A slow launch holds no other launch": the
