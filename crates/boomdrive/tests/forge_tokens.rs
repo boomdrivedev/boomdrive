@@ -8,7 +8,7 @@ mod fakes;
 mod github;
 
 use boomdrive::config::{Address, ForgeApp};
-use boomdrive::forge::{Asked, Forge, Minted, Refused};
+use boomdrive::forge::{Asked, Forge, Https, Minted, Refused};
 use boomdrive::forge_token::{self, Operation};
 use boomdrive::git::Credential;
 use common::{keeping, Scratch};
@@ -30,12 +30,22 @@ fn address(text: &str) -> Address {
     Address::parse(text).expect("an address")
 }
 
-/// A forge calling `github`.
+/// A forge whose mints call `github` in memory.
 fn forge(github: &GitHub) -> Forge {
-    Forge::at(&github.url).calling_for(Duration::from_secs(5))
+    Forge::over(github.api())
 }
 
-/// The forge-tokens spec's "A token for one repository".
+/// A forge whose mints call `github`, listening, over HTTP, each call
+/// stopped at `limit`: the contract of the forge's `Https` with GitHub's
+/// API.
+fn over_http(github: &GitHub, limit: Duration) -> Forge {
+    Forge::over(Box::new(Https::at(&github.url).calling_for(limit)))
+}
+
+/// The forge-tokens spec's "A token for one repository", over HTTP: the
+/// contract of the forge's `Https` with GitHub's API, its two calls, their
+/// methods, paths, headers' JWT and body, and the token read from the
+/// answer.
 #[test]
 fn a_token_is_bought_for_its_repository_alone() {
     let scratch = Scratch::new();
@@ -43,7 +53,7 @@ fn a_token_is_bought_for_its_repository_alone() {
     github.install("agentplot/flume", 7);
     let before = time::OffsetDateTime::now_utc();
 
-    let minted = forge(&github)
+    let minted = over_http(&github, Duration::from_secs(5))
         .mint(
             &app(Key::App.write(&scratch.home, 0o600)),
             &address("agentplot/flume"),
@@ -78,7 +88,7 @@ fn a_token_is_bought_for_its_repository_alone() {
 #[test]
 fn the_app_not_installed_is_its_own_answer() {
     let scratch = Scratch::new();
-    let github = GitHub::start();
+    let github = GitHub::new();
     github.install("agentplot/sluice", 7);
 
     let minted = forge(&github).mint(
@@ -100,7 +110,7 @@ fn the_app_not_installed_is_its_own_answer() {
 #[test]
 fn a_key_others_may_read_calls_no_one() {
     let scratch = Scratch::new();
-    let github = GitHub::start();
+    let github = GitHub::new();
     github.install("agentplot/flume", 7);
     let key_file = Key::App.write(&scratch.home, 0o644);
 
@@ -123,7 +133,7 @@ fn a_key_others_may_read_calls_no_one() {
 #[test]
 fn a_key_file_that_is_no_key_calls_no_one() {
     let scratch = Scratch::new();
-    let github = GitHub::start();
+    let github = GitHub::new();
     github.install("agentplot/flume", 7);
     let key_file = Key::App.write(&scratch.home, 0o600);
     std::fs::write(
@@ -153,7 +163,7 @@ fn a_key_file_that_is_no_key_calls_no_one() {
 #[test]
 fn a_refused_mint_names_github_and_holds_no_secret() {
     let scratch = Scratch::new();
-    let github = GitHub::start();
+    let github = GitHub::new();
     github
         .install("agentplot/flume", 7)
         .answering(401, "A JSON web token could not be decoded");
@@ -190,7 +200,7 @@ fn a_silent_api_is_stopped_at_its_limit() {
     let scratch = Scratch::new();
     let github = GitHub::start();
     github.install("agentplot/flume", 7).silent();
-    let forge = Forge::at(&github.url).calling_for(Duration::from_millis(500));
+    let forge = over_http(&github, Duration::from_millis(500));
     let started = Instant::now();
 
     let refused = forge
@@ -281,7 +291,7 @@ fn the_answer(output: &str, token: &str) {
 fn a_get_gives_a_served_repositorys_token_on_standard_output_alone() {
     let scratch = Scratch::new();
     scratch.configure(&naming_the_app(&scratch));
-    let github = GitHub::start();
+    let github = GitHub::new();
     github.install("agentplot/flume", 7);
 
     let (answered, output) = ask(
@@ -310,7 +320,7 @@ fn a_repository_the_local_layer_adds_is_served() {
     let scratch = Scratch::new();
     scratch.configure(&naming_the_app(&scratch));
     scratch.configure_local("accounts.own.drives.home.repositories = [\"agentplot/sluice\"]\n");
-    let github = GitHub::start();
+    let github = GitHub::new();
     github.install("agentplot/sluice", 9);
 
     let (answered, output) = ask(
@@ -337,7 +347,7 @@ fn a_repository_the_local_layer_adds_is_served() {
 fn each_get_mints() {
     let scratch = Scratch::new();
     scratch.configure(&naming_the_app(&scratch));
-    let github = GitHub::start();
+    let github = GitHub::new();
     github.install("agentplot/flume", 7);
 
     let (first, once) = ask(
@@ -381,7 +391,7 @@ fn refused_with(asked: (Result<(), Refused>, String), words: &str) {
 fn a_repository_no_drive_serves_is_refused() {
     let scratch = Scratch::new();
     scratch.configure(&naming_the_app(&scratch));
-    let github = GitHub::start();
+    let github = GitHub::new();
     github.install("someone/else", 7);
 
     refused_with(
@@ -401,7 +411,7 @@ fn a_repository_no_drive_serves_is_refused() {
 fn another_host_is_refused() {
     let scratch = Scratch::new();
     scratch.configure(&naming_the_app(&scratch));
-    let github = GitHub::start();
+    let github = GitHub::new();
     github.install("agentplot/flume", 7);
 
     refused_with(
@@ -438,7 +448,7 @@ fn another_host_is_refused() {
 fn a_request_with_no_path_is_refused() {
     let scratch = Scratch::new();
     scratch.configure(&naming_the_app(&scratch));
-    let github = GitHub::start();
+    let github = GitHub::new();
     github.install("agentplot/flume", 7);
 
     refused_with(
@@ -462,7 +472,7 @@ fn a_request_with_no_path_is_refused() {
 fn a_repository_the_app_is_not_installed_on_is_refused() {
     let scratch = Scratch::new();
     scratch.configure(&naming_the_app(&scratch));
-    let github = GitHub::start();
+    let github = GitHub::new();
 
     refused_with(
         ask(
@@ -481,7 +491,7 @@ fn a_repository_the_app_is_not_installed_on_is_refused() {
 fn an_erase_revokes_nothing_and_the_next_get_mints_afresh() {
     let scratch = Scratch::new();
     scratch.configure(&naming_the_app(&scratch));
-    let github = GitHub::start();
+    let github = GitHub::new();
     github.install("agentplot/flume", 7);
 
     let (_, given) = ask(
@@ -551,7 +561,7 @@ fn files(dir: &Path) -> Vec<PathBuf> {
 fn nothing_is_left_behind() {
     let scratch = Scratch::new();
     scratch.configure(&naming_the_app(&scratch));
-    let github = GitHub::start();
+    let github = GitHub::new();
     github.install("agentplot/flume", 7);
     let config_dir = scratch.home.join(".config");
     let before = (files(&scratch.data()), files(&config_dir));
@@ -1014,7 +1024,7 @@ fn token_of(asked: &Asked) -> String {
 #[test]
 fn a_token_is_given_again_until_five_minutes_before_its_end() {
     let scratch = Scratch::new();
-    let github = GitHub::start();
+    let github = GitHub::new();
     github.install("agentplot/flume", 7);
     let app = app(Key::App.write(&scratch.home, 0o600));
     let forge = forge(&github);
@@ -1040,7 +1050,7 @@ fn a_token_is_given_again_until_five_minutes_before_its_end() {
 #[test]
 fn a_token_near_its_end_is_bought_again() {
     let scratch = Scratch::new();
-    let github = GitHub::start();
+    let github = GitHub::new();
     github
         .install("agentplot/flume", 7)
         .lasting(Duration::from_secs(4 * 60));
@@ -1057,7 +1067,7 @@ fn a_token_near_its_end_is_bought_again() {
 #[test]
 fn a_dropped_token_is_bought_again() {
     let scratch = Scratch::new();
-    let github = GitHub::start();
+    let github = GitHub::new();
     github.install("agentplot/flume", 7);
     let app = app(Key::App.write(&scratch.home, 0o600));
     let forge = forge(&github);
@@ -1073,7 +1083,7 @@ fn a_dropped_token_is_bought_again() {
 #[test]
 fn another_app_drops_every_token() {
     let scratch = Scratch::new();
-    let github = GitHub::start();
+    let github = GitHub::new();
     github.install("agentplot/flume", 7);
     let first_app = app(Key::App.write(&scratch.home, 0o600));
     let other_app = app(Key::Other.write(&scratch.home, 0o600));
@@ -1103,7 +1113,7 @@ fn another_app_drops_every_token() {
 #[test]
 fn the_apps_absence_is_kept() {
     let scratch = Scratch::new();
-    let github = GitHub::start();
+    let github = GitHub::new();
     let app = app(Key::App.write(&scratch.home, 0o600));
     let forge = forge(&github);
 

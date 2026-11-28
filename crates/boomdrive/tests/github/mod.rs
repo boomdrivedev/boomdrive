@@ -1,6 +1,8 @@
-//! A fake of GitHub's API on the loopback address (design Decision 9): a
-//! listener on `127.0.0.1` of the test's own, answering one HTTP/1.1
-//! request for each connection on a thread of its own. It finds the App's
+//! A fake of GitHub's API (design Decision 9), held in memory behind the
+//! forge's `GitHubApi` seam, or, for the contract tests of `Https`, on the
+//! loopback address: a listener on `127.0.0.1` of the test's own,
+//! answering one HTTP/1.1 request for each connection on a thread of its
+//! own. Either way it answers each call alike. It finds the App's
 //! installation on the repositories it was told of, mints a fresh token
 //! each time it is asked for one, gives an answer it was told to in place
 //! of either, or holds every connection silent. It verifies each JWT
@@ -13,6 +15,7 @@
 
 #![allow(dead_code)]
 
+use boomdrive::forge::GitHubApi;
 use jsonwebtoken::{Algorithm, DecodingKey, Validation};
 use rsa::pkcs1::EncodeRsaPrivateKey;
 use rsa::pkcs8::{EncodePublicKey, LineEnding};
@@ -119,14 +122,39 @@ struct State {
     tokens: Vec<String>,
 }
 
-/// The fake, listening until the test binary ends.
+/// The fake, held in memory, or listening until the test binary ends.
 pub struct GitHub {
-    /// The API's address, `http://127.0.0.1:<port>`.
+    /// The API's address, `http://127.0.0.1:<port>`, where it listens.
     pub url: String,
     state: Arc<Mutex<State>>,
 }
 
+/// The fake as the forge calls it in memory, with no connection.
+struct Held(Arc<Mutex<State>>);
+
+impl GitHubApi for Held {
+    fn call(&self, path: &str, bearer: &str, body: Option<&str>) -> Result<(u16, String), String> {
+        let method = if body.is_some() { "POST" } else { "GET" };
+        let jwt = bearer.strip_prefix("Bearer ").unwrap_or(bearer);
+        let (status, answer) = handle(&self.0, method, path, jwt, body.unwrap_or_default());
+        Ok((status, answer.to_string()))
+    }
+}
+
 impl GitHub {
+    /// A fake held in memory, on which the App is installed nowhere.
+    pub fn new() -> GitHub {
+        GitHub {
+            url: String::new(),
+            state: Arc::new(Mutex::new(State::default())),
+        }
+    }
+
+    /// The fake as a forge's mints call it, in memory.
+    pub fn api(&self) -> Box<dyn GitHubApi> {
+        Box::new(Held(Arc::clone(&self.state)))
+    }
+
     /// A fake on a port of its own, on which the App is installed nowhere.
     pub fn start() -> GitHub {
         let listener = TcpListener::bind("127.0.0.1:0").expect("the fake's listener");
@@ -228,7 +256,19 @@ fn answer(stream: TcpStream, state: &Mutex<State>) {
     let mut body = vec![0; length];
     let _ = reader.read_exact(&mut body);
     let body = String::from_utf8_lossy(&body).into_owned();
+    let (status, answer) = handle(state, &method, &path, &jwt, &body);
+    reply(stream, status, &answer);
+}
 
+/// The fake's answer to `method` at `path` under the bearer `jwt` with
+/// `body`, as `state` has it, the request kept.
+fn handle(state: &Mutex<State>, method: &str, path: &str, jwt: &str, body: &str) -> (u16, Value) {
+    let (method, path, jwt, body) = (
+        method.to_string(),
+        path.to_string(),
+        jwt.to_string(),
+        body.to_string(),
+    );
     let mut validation = Validation::new(Algorithm::RS256);
     validation.set_required_spec_claims(&["exp", "iat", "iss"]);
     let verified = [Key::App, Key::Other].into_iter().find_map(|key| {
@@ -255,8 +295,7 @@ fn answer(stream: TcpStream, state: &Mutex<State>) {
     } else {
         route(&mut state, &method, &path)
     };
-    drop(state);
-    reply(stream, status, &answer);
+    (status, answer)
 }
 
 /// GitHub's answer to `method` at `path`.
