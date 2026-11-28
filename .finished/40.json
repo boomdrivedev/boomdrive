@@ -1,0 +1,31 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 40,
+  "branch": "main",
+  "head": "9e5e29b875c65631340bd901ab06767e3834adc8",
+  "from": {
+    "agent": "chore/agents-check-only-their-projects",
+    "worktree": "pull/179",
+    "head": "chore/agents-check-only-their-projects"
+  },
+  "submitted": "2026-11-26T22:18:44Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "withdrawn",
+  "tested": {
+    "combination": "fc7d9dccb7634a1396909da4a9eb5c2297d60971",
+    "on": "7461f85aab1d29de834a46093149a1680a5facf8",
+    "submissions": [
+      39,
+      40
+    ]
+  },
+  "withdrawn": {
+    "by": "operator",
+    "at": "2026-11-26T22:58:50Z"
+  },
+  "subject": "chore/agents-check-only-their-projects",
+  "under_test_ms": 2371000,
+  "runs_with_no_outcome": 45
+}

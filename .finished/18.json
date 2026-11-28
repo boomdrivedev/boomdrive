@@ -1,0 +1,26 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 18,
+  "branch": "main",
+  "head": "1adf167979e2496a363c2da258a26065d20347f9",
+  "from": {
+    "agent": "feat/the-set-installs-millpond",
+    "worktree": "pull/161",
+    "head": "feat/the-set-installs-millpond"
+  },
+  "submitted": "2026-11-19T19:57:31Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "4cecb1c925bda5ae3ea655fa8699cab845ab7a88",
+    "on": "97c476baef3d427027a71e917dbba38a632b42f5",
+    "submissions": [
+      18
+    ]
+  },
+  "result": "passed",
+  "landed_as": "6a0fc54fc210a34a210921bff46cb6cc5f64bdcb",
+  "subject": "the set installs millpond and writes its host configuration"
+}

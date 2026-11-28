@@ -1,0 +1,27 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 39,
+  "branch": "main",
+  "head": "2b852e4260b5502a2ef514bec207a435e2416539",
+  "from": {
+    "agent": "fix/the-runner-answers-its-launches",
+    "worktree": "pull/178",
+    "head": "fix/the-runner-answers-its-launches"
+  },
+  "submitted": "2026-11-26T22:17:09Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "c7456e8621bbdcff35e86af8759da265855edfd2",
+    "on": "7461f85aab1d29de834a46093149a1680a5facf8",
+    "submissions": [
+      39
+    ]
+  },
+  "result": "passed",
+  "landed_as": "1ef89db15aa59a3d0c6b5d445cbf5edf735b84a3",
+  "subject": "fix/the-runner-answers-its-launches",
+  "under_test_ms": 623000
+}

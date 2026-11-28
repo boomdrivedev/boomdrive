@@ -1,0 +1,27 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 36,
+  "branch": "main",
+  "head": "9484beede9466fae74e23242fae32f0bdab76586",
+  "from": {
+    "agent": "fix/the-runner-asks-status-by-branch",
+    "worktree": "pull/175",
+    "head": "fix/the-runner-asks-status-by-branch"
+  },
+  "submitted": "2026-11-26T15:06:43Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "44d6bf2b7661eba6e0d287649f2ef1ed5eea02f5",
+    "on": "36aa85bcfc10248fa58a31fd5e6362db05f0972e",
+    "submissions": [
+      36
+    ]
+  },
+  "result": "passed",
+  "landed_as": "1e8f25175d928dce460063e4f1f0a2fb99040bd3",
+  "subject": "fix/the-runner-asks-status-by-branch",
+  "under_test_ms": 143000
+}

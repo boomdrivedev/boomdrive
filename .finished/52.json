@@ -1,0 +1,27 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 52,
+  "branch": "main",
+  "head": "284419f8c7a2a512d2328fa1187ee338120e0f36",
+  "from": {
+    "agent": "research/the-residents-reconcile",
+    "worktree": "pull/189",
+    "head": "research/the-residents-reconcile"
+  },
+  "submitted": "2026-11-27T16:33:45Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "c1677141b605bfab977afff6b1a1656b645593a8",
+    "on": "ef16c842968d03790bef9ab5f903c5a644528a66",
+    "submissions": [
+      52
+    ]
+  },
+  "result": "passed",
+  "landed_as": "8d36ef513f785eb7929a01bfb3d1bd8aa9a25163",
+  "subject": "research/the-residents-reconcile",
+  "under_test_ms": 80000
+}

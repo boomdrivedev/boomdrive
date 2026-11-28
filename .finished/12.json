@@ -1,0 +1,26 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 12,
+  "branch": "main",
+  "head": "d4d0b2cbef446850fc1822ac65a48ea08b63d6dd",
+  "from": {
+    "agent": "boomdrive-design",
+    "worktree": "pull/154",
+    "head": "design/the-flake-runs-boomdrive-cloud-on-a-host"
+  },
+  "submitted": "2026-11-19T16:58:30Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "2d3d503ce103876125cefc91d73957324b701ae8",
+    "on": "bf569def2832dc86092ccba24c1e9749f3122e79",
+    "submissions": [
+      12
+    ]
+  },
+  "result": "passed",
+  "landed_as": "8e89acb52ee0d553572362368dd0706c1acf511f",
+  "subject": "design/the-flake-runs-boomdrive-cloud-on-a-host"
+}

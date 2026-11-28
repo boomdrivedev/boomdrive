@@ -1,0 +1,27 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 60,
+  "branch": "main",
+  "head": "2144bf2a39d3862f037fa3f86127e325b87b1290",
+  "from": {
+    "agent": "chore/boomdrive-tests-its-logic-as-units",
+    "worktree": "pull/197",
+    "head": "chore/boomdrive-tests-its-logic-as-units"
+  },
+  "submitted": "2026-11-28T08:41:44Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "e06442c25df7ca41e99eb3c49037be106772e68d",
+    "on": "cd6286cde9b4cc732cedef0e1d4a0e76813b6714",
+    "submissions": [
+      60
+    ]
+  },
+  "result": "passed",
+  "landed_as": "165ceab9dbbbe4dc60f4895b7284bc62c87fed7d",
+  "subject": "chore/boomdrive-tests-its-logic-as-units",
+  "under_test_ms": 230000
+}

@@ -1,0 +1,26 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 22,
+  "branch": "main",
+  "head": "57120cd029bdd93c85980a542c328384a74f67d7",
+  "from": {
+    "agent": "chore/the-set-takes-flume-v0-31-2-and-sluice-v0-99-2",
+    "worktree": "pull/164",
+    "head": "chore/the-set-takes-flume-v0-31-2-and-sluice-v0-99-2"
+  },
+  "submitted": "2026-11-20T01:56:45Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "4f7c29a96b232e6697c0fa53f376af5649193854",
+    "on": "5f927ac5c8148ce45b410ad59a6fa5e4515ce200",
+    "submissions": [
+      22
+    ]
+  },
+  "result": "passed",
+  "landed_as": "5b327e6994b0f8bd390683b3c5ad3e5cf51fa612",
+  "subject": "the set takes Flume v0.31.2 and sluice v0.99.2"
+}

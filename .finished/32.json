@@ -1,0 +1,27 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 32,
+  "branch": "main",
+  "head": "d88a60cec7a269bff20e80ae0a7b15c35781aab6",
+  "from": {
+    "agent": "change/the-runner-serves-each-accounts-own-control-plane",
+    "worktree": "pull/171",
+    "head": "change/the-runner-serves-each-accounts-own-control-plane"
+  },
+  "submitted": "2026-11-24T04:36:36Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "4383954142e9c0c219d65347ba4aa4b2a732e623",
+    "on": "07499b266e39c6afa44ea9449ed888d343d2d4cb",
+    "submissions": [
+      32
+    ]
+  },
+  "result": "passed",
+  "landed_as": "7f9721bb33d4fb4559ebc882f35abdd105e92de5",
+  "subject": "change/the-runner-serves-each-accounts-own-control-plane",
+  "under_test_ms": 296000
+}

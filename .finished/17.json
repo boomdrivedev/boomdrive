@@ -1,0 +1,26 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 17,
+  "branch": "main",
+  "head": "75184154e7f7bc5d744d7a10d775f809a8f48952",
+  "from": {
+    "agent": "feat/the-runners-pass-runs-millponds-tick",
+    "worktree": "pull/160",
+    "head": "feat/the-runners-pass-runs-millponds-tick"
+  },
+  "submitted": "2026-11-19T18:57:47Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "d051c103560c1c37aeb9d701f9734ddf1c4a7a68",
+    "on": "0c3c50477f5a822ddf8bc66a2c4a8b276a8b9ba6",
+    "submissions": [
+      17
+    ]
+  },
+  "result": "passed",
+  "landed_as": "97c476baef3d427027a71e917dbba38a632b42f5",
+  "subject": "the runner's pass runs millpond's tick of each inbox"
+}

@@ -1,0 +1,27 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 50,
+  "branch": "main",
+  "head": "7aa0026dc4707553850bc2a5fc44e01d601f657f",
+  "from": {
+    "agent": "change/the-runner-speaks-protocol-version-7",
+    "worktree": "pull/187",
+    "head": "change/the-runner-speaks-protocol-version-7"
+  },
+  "submitted": "2026-11-27T13:59:23Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "7b30b58908e833e0f38f0fc43a73fe266ee977ff",
+    "on": "8ce64532774ccad20820acd65ab6e1b29275acc3",
+    "submissions": [
+      50
+    ]
+  },
+  "result": "passed",
+  "landed_as": "eadbe27a324800cd02107f3f8ab2ee85b7e0bb17",
+  "subject": "change/the-runner-speaks-protocol-version-7",
+  "under_test_ms": 395000
+}

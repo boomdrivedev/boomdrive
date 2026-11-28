@@ -1,0 +1,27 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 48,
+  "branch": "main",
+  "head": "246841650a352374a6c81657b5425cc628e3adac",
+  "from": {
+    "agent": "change/one-command-installs-the-runner",
+    "worktree": "pull/185",
+    "head": "change/one-command-installs-the-runner"
+  },
+  "submitted": "2026-11-27T09:21:29Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "0b2c8a364b893cc06b5757a035df8b69edebfe51",
+    "on": "f40363bc778a26006d1dfb8b6213471e8e68aa97",
+    "submissions": [
+      48
+    ]
+  },
+  "result": "passed",
+  "landed_as": "56e9cc5cbd241139829cedf96cdcc686f9555797",
+  "subject": "change/one-command-installs-the-runner",
+  "under_test_ms": 319000
+}

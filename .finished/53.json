@@ -1,0 +1,27 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 53,
+  "branch": "main",
+  "head": "588ffe0a971376819c7407ba51258c133720f999",
+  "from": {
+    "agent": "chore/the-set-takes-sluice-0-112-0",
+    "worktree": "pull/190",
+    "head": "chore/the-set-takes-sluice-0-112-0"
+  },
+  "submitted": "2026-11-27T19:54:57Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "8011ed1921d1a7b36b8bd968d223121e2c0a4818",
+    "on": "8d36ef513f785eb7929a01bfb3d1bd8aa9a25163",
+    "submissions": [
+      53
+    ]
+  },
+  "result": "passed",
+  "landed_as": "4c4b34ab4e02642be963f1d4fecaf61c790522c5",
+  "subject": "chore/the-set-takes-sluice-0-112-0",
+  "under_test_ms": 371000
+}

@@ -1,0 +1,27 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 37,
+  "branch": "main",
+  "head": "6e2f53b2f94f45e652f957508dc9cebbc8896d4e",
+  "from": {
+    "agent": "change/the-runner-and-the-cloud-share-a-version",
+    "worktree": "pull/176",
+    "head": "change/the-runner-and-the-cloud-share-a-version"
+  },
+  "submitted": "2026-11-26T20:59:04Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "1c329549d06eb8a5dd9c95a47d76b4aac1bbbe60",
+    "on": "1e8f25175d928dce460063e4f1f0a2fb99040bd3",
+    "submissions": [
+      37
+    ]
+  },
+  "result": "passed",
+  "landed_as": "b08e47088351658cf6cd6b80d227e19b607ae974",
+  "subject": "change/the-runner-and-the-cloud-share-a-version",
+  "under_test_ms": 155000
+}

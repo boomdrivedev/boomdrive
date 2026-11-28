@@ -1,0 +1,27 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 4,
+  "branch": "main",
+  "head": "8985611a9e27b729c6e0f66fc18b304978b814b8",
+  "from": {
+    "agent": "boomdrive-design",
+    "worktree": "pull/147",
+    "head": "design/the-runner-reports-only-to-its-control-plane"
+  },
+  "submitted": "2026-11-19T13:13:18Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "79f6e731b676857edd40da32916d80d19273b310",
+    "on": "d8e00626683488cea3d7eecde99e70901306f263",
+    "submissions": [
+      2,
+      4
+    ]
+  },
+  "result": "passed",
+  "landed_as": "fc5c6a5d5dc27fc22df3ff4cdd65268c8301f425",
+  "subject": "design/the-runner-reports-only-to-its-control-plane"
+}

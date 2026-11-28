@@ -1,0 +1,38 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 30,
+  "branch": "main",
+  "head": "c6471b87049ad9d00f7a6e8bca0ce6fb6fb12ccc",
+  "from": {
+    "agent": "chore/the-set-takes-sluice-v0-105-1",
+    "worktree": "pull/170",
+    "head": "chore/the-set-takes-sluice-v0-105-1"
+  },
+  "submitted": "2026-11-24T02:18:37Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "withdrawn",
+  "tested": {
+    "combination": "c41e28eadaa79532a0b69a3ba5d1d743ee3df307",
+    "on": "2d995410078c99db93ba2e4ff758147e28fa67c0",
+    "submissions": [
+      30
+    ]
+  },
+  "result": "failed",
+  "failed": [
+    {
+      "task": "boomdrive:test",
+      "log": "/Users/chuck/.local/share/boomdrive/repositories/boomdrivedev/boomdrive/boomdrive.git/sluice-remote/origin/.logs/main/c35/boomdrive:test.log",
+      "not_run": "sluice's sandbox refused the run file-write-data /Users/chuck/.cargo/.package-cache (by cargo), file-write-xattr path:/Users/chuck/.cargo/registry xattr:com.apple.fileprovider.ignore#P (by cargo), file-write-xattr path:/Users/chuck/.cargo/git xattr:com.apple.fileprovider.ignore#P (by cargo) and 3 more"
+    }
+  ],
+  "withdrawn": {
+    "by": "resubmission",
+    "at": "2026-11-24T03:09:49Z"
+  },
+  "subject": "chore/the-set-takes-sluice-v0-105-1",
+  "under_test_ms": 767000,
+  "runs_with_no_outcome": 1
+}

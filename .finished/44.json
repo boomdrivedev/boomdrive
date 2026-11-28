@@ -1,0 +1,27 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 44,
+  "branch": "main",
+  "head": "fa344c6d5a015a08afc6886ebe9de053698180ea",
+  "from": {
+    "agent": "fix/an-update-keeps-keychain-access",
+    "worktree": "pull/181",
+    "head": "fix/an-update-keeps-keychain-access"
+  },
+  "submitted": "2026-11-26T23:28:59Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "8d0f10872787031b7d2bccae5850ae46fe8b62f6",
+    "on": "c1e38a2f24b1fcb3e0ebdf7c21ea97d51ff8d5cc",
+    "submissions": [
+      44
+    ]
+  },
+  "result": "passed",
+  "landed_as": "82c27413852ead5009574776a64f78fddeb5cd45",
+  "subject": "fix/an-update-keeps-keychain-access",
+  "under_test_ms": 413000
+}

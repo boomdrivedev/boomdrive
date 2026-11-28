@@ -1,0 +1,36 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 20,
+  "branch": "main",
+  "head": "d291d54b6389b738bcce2635d47c93cb91135e23",
+  "from": {
+    "agent": "chore/the-gate-reaches-the-cloud",
+    "worktree": "pull/163",
+    "head": "chore/the-gate-reaches-the-cloud"
+  },
+  "submitted": "2026-11-19T20:56:36Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "withdrawn",
+  "tested": {
+    "combination": "02e6ced0dee39fc54fe5b6cc5507fc4d15641f28",
+    "on": "62cc52f6bcd3190c0403842b9988faf44cb369db",
+    "submissions": [
+      20
+    ]
+  },
+  "result": "failed",
+  "failed": [
+    {
+      "task": "root:changes",
+      "log": "/Users/chuck/.local/share/boomdrive/repositories/boomdrivedev/boomdrive/boomdrive.git/sluice-remote/origin/.logs/main/c27/root:changes.log",
+      "not_run": "sluice's sandbox refused the run network-outbound remote:*:53 (by moon), network-outbound /private/var/run/mDNSResponder (a name lookup, by moon) and network-outbound (by moon)"
+    }
+  ],
+  "withdrawn": {
+    "by": "resubmission",
+    "at": "2026-11-19T21:07:31Z"
+  },
+  "subject": "chore/the-gate-reaches-the-cloud"
+}

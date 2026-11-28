@@ -1,0 +1,27 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 33,
+  "branch": "main",
+  "head": "0df05b18647a62bf2f9044f70daf8d515bb48ce4",
+  "from": {
+    "agent": "change/the-runner-hears-flume-by-subscription",
+    "worktree": "pull/172",
+    "head": "change/the-runner-hears-flume-by-subscription"
+  },
+  "submitted": "2026-11-24T19:00:05Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "373b8d956f27d2ec92cff09af38216f7dbed0cc6",
+    "on": "7f9721bb33d4fb4559ebc882f35abdd105e92de5",
+    "submissions": [
+      33
+    ]
+  },
+  "result": "passed",
+  "landed_as": "1e9ca554f12485ef89fcd30ed889d6725691a030",
+  "subject": "change/the-runner-hears-flume-by-subscription",
+  "under_test_ms": 770000
+}

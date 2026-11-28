@@ -1,0 +1,27 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 29,
+  "branch": "main",
+  "head": "5846f79a2e2c620a77a618039b4980ce94829f1a",
+  "from": {
+    "agent": "chore/boomdrive-keeps-its-seam-model",
+    "worktree": "pull/169",
+    "head": "chore/boomdrive-keeps-its-seam-model"
+  },
+  "submitted": "2026-11-24T01:23:15Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "e46720f00db34a34c183f695a765d76d9463459e",
+    "on": "889ece3960b0ea3ef7e4f1a8b876e2c909448861",
+    "submissions": [
+      29
+    ]
+  },
+  "result": "passed",
+  "landed_as": "2d995410078c99db93ba2e4ff758147e28fa67c0",
+  "subject": "boomdrive keeps its side of the tools' seams in Allium, checked in the fast tier",
+  "under_test_ms": 380000
+}

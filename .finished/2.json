@@ -1,0 +1,26 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 2,
+  "branch": "main",
+  "head": "c45091144e91200f1489af197a856dab279a183e",
+  "from": {
+    "agent": "boomdrive-design",
+    "worktree": "pull/146",
+    "head": "design/the-runner-carries-work-concurrently"
+  },
+  "submitted": "2026-11-19T02:57:31Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "cf1306b7798d5f5267da94edb0b6c910fdffc279",
+    "on": "d8e00626683488cea3d7eecde99e70901306f263",
+    "submissions": [
+      2
+    ]
+  },
+  "result": "passed",
+  "landed_as": "59ce3025f55e63b9c661af63004ac6ea906ea6a1",
+  "subject": "design/the-runner-carries-work-concurrently"
+}

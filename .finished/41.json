@@ -1,0 +1,27 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 41,
+  "branch": "main",
+  "head": "6e6700ff2877881eead80aa362240b6bf975cb65",
+  "from": {
+    "agent": "change/protocol-version-6-names-the-newest-release",
+    "worktree": "pull/180",
+    "head": "change/protocol-version-6-names-the-newest-release"
+  },
+  "submitted": "2026-11-26T22:20:04Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "withdrawn",
+  "conflict": {
+    "paths": [
+      "openspec/specs/hosted-control-plane/spec.md"
+    ],
+    "with": []
+  },
+  "withdrawn": {
+    "by": "resubmission",
+    "at": "2026-11-26T22:29:01Z"
+  },
+  "subject": "change/protocol-version-6-names-the-newest-release"
+}

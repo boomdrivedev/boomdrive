@@ -1,0 +1,27 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 35,
+  "branch": "main",
+  "head": "35242da3a861735af40561babb0b4320a5f93852",
+  "from": {
+    "agent": "change/a-host-enrolls-from-one-command",
+    "worktree": "pull/174",
+    "head": "change/a-host-enrolls-from-one-command"
+  },
+  "submitted": "2026-11-26T03:34:31Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "afac4410a229df24ff2411fe7d612bd507efb3f6",
+    "on": "3fb41c827b4f2a7284abba7e3b758d6fdb4c8fde",
+    "submissions": [
+      35
+    ]
+  },
+  "result": "passed",
+  "landed_as": "36aa85bcfc10248fa58a31fd5e6362db05f0972e",
+  "subject": "change/a-host-enrolls-from-one-command",
+  "under_test_ms": 361000
+}

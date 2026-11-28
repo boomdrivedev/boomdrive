@@ -1,0 +1,26 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 10,
+  "branch": "main",
+  "head": "e763fa2781de30f5c946cd1cba6a60f700606560",
+  "from": {
+    "agent": "boomdrive-design",
+    "worktree": "pull/153",
+    "head": "design/record-0054-takes-its-own-number"
+  },
+  "submitted": "2026-11-19T16:57:18Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "e3ed779b735528dbed08fa143ea2b9dad1ab1896",
+    "on": "ad089883982a0bdd936775ca105a3015f36cb911",
+    "submissions": [
+      10
+    ]
+  },
+  "result": "passed",
+  "landed_as": "daf196df127fbe508f4a8c85d54523e5a012e736",
+  "subject": "design/record-0054-takes-its-own-number"
+}

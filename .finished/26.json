@@ -1,0 +1,27 @@
+{
+  "schema": "sluice/submission@1",
+  "id": 26,
+  "branch": "main",
+  "head": "7523f1b3d5c597223d2fbf17f8c438beae452aba",
+  "from": {
+    "agent": "bolt/every-machine-takes-boomdrives-tools",
+    "worktree": "pull/166",
+    "head": "bolt/every-machine-takes-boomdrives-tools"
+  },
+  "submitted": "2026-11-20T21:18:37Z",
+  "after": [],
+  "priority": 0,
+  "attempt": 1,
+  "state": "landed",
+  "tested": {
+    "combination": "a403c7db5d5d8e5e177f49bb36b13d6d191ed969",
+    "on": "5acbce1eb18687d6e9bcb771c551e702481dc828",
+    "submissions": [
+      26
+    ]
+  },
+  "result": "passed",
+  "landed_as": "8d244dc519df5fa1555c528ad05992fc6b430294",
+  "subject": "every machine takes boomdrive's tools",
+  "under_test_ms": 223000
+}
