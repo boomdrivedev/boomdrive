@@ -888,3 +888,497 @@ fn clear_partials(data: &Path, clones: &[Found], say: &mut dyn FnMut(String)) ->
     }
     outcome
 }
+
+/// Each drive's VS Code workspace at the repository root, where the
+/// configuration asks: its folders the drive's kept repositories, set at
+/// every pass, the rest of the file kept, and a file the runner cannot
+/// read left as it is and named (the views spec; core.43; record 0017 as
+/// revised; design Decision 1). These read the configuration and the
+/// files at the repository root, and a pass over drives that keep no
+/// repository, so none runs git (logic-is-tested-as-units-and-few-tests-
+/// run-the-binary); `tests/code_workspaces.rs` keeps the two whose clones
+/// record their drives.
+#[cfg(test)]
+mod workspaces {
+    use super::{keep_workspaces, pass, wanted_workspaces, Outcome};
+    use crate::config::{self, Config};
+    use crate::forge::Forge;
+    use crate::git::Git;
+    use crate::locks::Locks;
+    use serde_json::{json, Value};
+    use std::ffi::OsStr;
+    use std::fs;
+    use std::os::unix::fs::{MetadataExt, PermissionsExt};
+    use std::path::{Path, PathBuf};
+    use std::sync::atomic::AtomicBool;
+    use tempfile::TempDir;
+
+    /// A home of the test's own, its repository root `~/Code` by default.
+    struct Home(TempDir);
+
+    impl Home {
+        fn new() -> Home {
+            Home(tempfile::tempdir().expect("a home"))
+        }
+
+        fn path(&self) -> &Path {
+            self.0.path()
+        }
+
+        /// The configuration `text`, read as the default file.
+        fn config(&self, text: &str) -> Config {
+            let file = self.path().join(".config/boomdrive/config.toml");
+            config::parse(text, &file, self.path()).expect("a configuration")
+        }
+
+        /// `drive`'s workspace at the default repository root.
+        fn workspace(&self, drive: &str) -> PathBuf {
+            self.path()
+                .join("Code")
+                .join(format!("{drive}.code-workspace"))
+        }
+
+        /// One pass over `config`, stopped from its start where `stop`.
+        /// It keeps no repository, so it runs no git.
+        fn pass(&self, config: &Config, stop: bool) -> (Outcome, Vec<String>) {
+            let mut lines = Vec::new();
+            let outcome = pass(
+                &Git::default(),
+                &Forge::new(),
+                &self.path().join(".local/share/boomdrive"),
+                config,
+                &Locks::new(),
+                &AtomicBool::new(stop),
+                &mut || false,
+                &mut |line| lines.push(line),
+            );
+            (outcome, lines)
+        }
+    }
+
+    /// A configuration keeping each of `kept`'s drives of the account
+    /// `own` with its addresses, in order, asking for the workspaces
+    /// where `asks`.
+    fn drives(asks: bool, kept: &[(&str, &[&str])]) -> String {
+        let mut text = if asks {
+            "code_workspaces = true\n".to_string()
+        } else {
+            String::new()
+        };
+        for (drive, addresses) in kept {
+            let entries: Vec<String> = addresses.iter().map(|a| format!("{a:?}")).collect();
+            text.push_str(&format!(
+                "accounts.own.drives.{drive}.repositories = [{}]\n",
+                entries.join(", ")
+            ));
+        }
+        text
+    }
+
+    /// A configuration keeping `addresses` in the drive `home`, asking
+    /// for the workspaces.
+    fn asking(addresses: &[&str]) -> String {
+        drives(true, &[("home", addresses)])
+    }
+
+    /// The workspaces `config` wants kept, as a pass's end keeps them.
+    fn keep(config: &Config) -> (Outcome, Vec<String>) {
+        let wanted = wanted_workspaces(config).expect("the workspaces asked for");
+        let mut lines = Vec::new();
+        let outcome = keep_workspaces(&wanted, &mut |line| lines.push(line));
+        (outcome, lines)
+    }
+
+    /// The JSON the file at `path` holds.
+    fn json(path: &Path) -> Value {
+        serde_json::from_slice(&fs::read(path).expect("the workspace")).expect("JSON")
+    }
+
+    /// The names of `value`'s members, in its order.
+    fn members(value: &Value) -> Vec<String> {
+        value
+            .as_object()
+            .expect("an object")
+            .keys()
+            .cloned()
+            .collect()
+    }
+
+    /// The line a pass says when it writes the workspace `file` with
+    /// `folders`.
+    fn written(file: &Path, folders: &str) -> String {
+        format!(
+            "boomdrive: workspace written at {}: {folders}",
+            file.display()
+        )
+    }
+
+    /// The beginning of the line a pass says when it leaves `file`.
+    fn left(file: &Path) -> String {
+        format!("boomdrive: workspace left at {}: ", file.display())
+    }
+
+    /// Every file under `dir` whose name ends in `.code-workspace`, sorted.
+    fn workspaces_under(dir: &Path) -> Vec<PathBuf> {
+        let mut found = Vec::new();
+        let Ok(read) = fs::read_dir(dir) else {
+            return found;
+        };
+        for entry in read {
+            let path = entry.expect("an entry").path();
+            let kind = fs::symlink_metadata(&path).expect("the entry").file_type();
+            if kind.is_dir() {
+                found.extend(workspaces_under(&path));
+            } else if path.extension() == Some(OsStr::new("code-workspace")) {
+                found.push(path);
+            }
+        }
+        found.sort();
+        found
+    }
+
+    /// A folder's mode, set for a test and set back to 0755 when dropped,
+    /// so the scratch folder can be removed.
+    struct Mode(PathBuf);
+
+    impl Mode {
+        fn set(folder: &Path, mode: u32) -> Mode {
+            fs::set_permissions(folder, fs::Permissions::from_mode(mode))
+                .expect("the folder's mode");
+            Mode(folder.to_path_buf())
+        }
+    }
+
+    impl Drop for Mode {
+        fn drop(&mut self) {
+            let _ = fs::set_permissions(&self.0, fs::Permissions::from_mode(0o755));
+        }
+    }
+
+    /// The views spec's "The first workspaces": each drive's, at the
+    /// repository root alone, its folders its repositories in the file's
+    /// order, and `settings` after them.
+    #[test]
+    fn the_first_workspaces() {
+        let home = Home::new();
+        let config = home.config(&drives(
+            true,
+            &[
+                ("home", &["agentplot/flume", "example/crew"]),
+                ("work", &["agentplot/sluice"]),
+            ],
+        ));
+
+        let (outcome, lines) = keep(&config);
+
+        let (mine, work) = (home.workspace("home"), home.workspace("work"));
+        assert_eq!(outcome, Outcome::Kept);
+        assert_eq!(
+            json(&mine),
+            json!({
+                "folders": [{"path": "agentplot/flume"}, {"path": "example/crew"}],
+                "settings": {},
+            })
+        );
+        assert_eq!(members(&json(&mine)), ["folders", "settings"]);
+        assert_eq!(
+            json(&work),
+            json!({"folders": [{"path": "agentplot/sluice"}], "settings": {}})
+        );
+        assert_eq!(
+            workspaces_under(&home.path().join("Code")),
+            [mine.clone(), work.clone()],
+            "no owner's folder holds a workspace"
+        );
+        assert_eq!(
+            lines,
+            [
+                written(&mine, "agentplot/flume, example/crew"),
+                written(&work, "agentplot/sluice"),
+            ]
+        );
+    }
+
+    /// The views spec's "No workspace asked for": a pass writes none.
+    #[test]
+    fn no_workspace_asked_for() {
+        let home = Home::new();
+        let config = home.config(&drives(false, &[("home", &[])]));
+
+        let (outcome, lines) = home.pass(&config, false);
+
+        assert_eq!(outcome, Outcome::Kept);
+        assert_eq!(workspaces_under(home.path()), [] as [PathBuf; 0]);
+        assert_eq!(lines, [] as [String; 0]);
+    }
+
+    /// The views spec's "A kept repository with no view": its folder is
+    /// in the workspace all the same.
+    #[test]
+    fn a_kept_repository_with_no_view() {
+        let home = Home::new();
+        let config = home.config(&asking(&["agentplot/flume", "agentplot/empty"]));
+
+        let (outcome, lines) = keep(&config);
+
+        let file = home.workspace("home");
+        assert_eq!(outcome, Outcome::Kept);
+        assert!(!home.path().join("Code/agentplot/empty").exists());
+        assert_eq!(
+            json(&file)["folders"],
+            json!([{"path": "agentplot/flume"}, {"path": "agentplot/empty"}])
+        );
+        assert_eq!(lines, [written(&file, "agentplot/flume, agentplot/empty")]);
+    }
+
+    /// The views spec's "A drive keeping none": a pass, at its end,
+    /// writes the drive's workspace with no folders.
+    #[test]
+    fn a_drive_keeping_none() {
+        let home = Home::new();
+        let config = home.config(&drives(true, &[("garden", &[])]));
+
+        let (outcome, lines) = home.pass(&config, false);
+
+        let file = home.workspace("garden");
+        assert_eq!(outcome, Outcome::Kept);
+        assert_eq!(json(&file), json!({"folders": [], "settings": {}}));
+        assert_eq!(lines, [written(&file, "no folders")]);
+    }
+
+    /// The views spec's "A new root": the drive's workspace is made afresh
+    /// at the new root, and the one at the old root is left as it was.
+    #[test]
+    fn a_new_root() {
+        let home = Home::new();
+        let under = |root: &str| {
+            home.config(&format!(
+                "repository_root = {root:?}\n{}",
+                asking(&["agentplot/flume"])
+            ))
+        };
+        keep(&under("~/Code"));
+        let old = home.workspace("home");
+        let before = fs::read(&old).expect("the old root's workspace");
+
+        let (outcome, lines) = keep(&under("~/src"));
+
+        let new = home.path().join("src/home.code-workspace");
+        assert_eq!(outcome, Outcome::Kept);
+        assert_eq!(
+            json(&new),
+            json!({"folders": [{"path": "agentplot/flume"}], "settings": {}})
+        );
+        assert_eq!(fs::read(&old).expect("the old root's workspace"), before);
+        assert_eq!(lines, [written(&new, "agentplot/flume")]);
+    }
+
+    /// The views spec's "The user's settings kept".
+    #[test]
+    fn the_users_settings_kept() {
+        let home = Home::new();
+        keep(&home.config(&asking(&["agentplot/flume"])));
+        let file = home.workspace("home");
+        fs::write(
+            &file,
+            "{\n\
+             \t\"folders\": [\n\
+             \t\t{\n\
+             \t\t\t\"path\": \"agentplot/flume\"\n\
+             \t\t}\n\
+             \t],\n\
+             \t\"settings\": {\n\
+             \t\t\"editor.tabSize\": 2\n\
+             \t},\n\
+             \t\"extensions\": {\n\
+             \t\t\"recommendations\": [\"rust-lang.rust-analyzer\"]\n\
+             \t}\n\
+             }\n",
+        )
+        .expect("the user's settings");
+
+        let (outcome, lines) =
+            keep(&home.config(&asking(&["agentplot/flume", "agentplot/sluice"])));
+
+        let value = json(&file);
+        assert_eq!(outcome, Outcome::Kept);
+        assert_eq!(members(&value), ["folders", "settings", "extensions"]);
+        assert_eq!(
+            value,
+            json!({
+                "folders": [{"path": "agentplot/flume"}, {"path": "agentplot/sluice"}],
+                "settings": {"editor.tabSize": 2},
+                "extensions": {"recommendations": ["rust-lang.rust-analyzer"]},
+            })
+        );
+        assert_eq!(lines, [written(&file, "agentplot/flume, agentplot/sluice")]);
+    }
+
+    /// The views spec's "Folders edited by hand": set back at the next
+    /// pass.
+    #[test]
+    fn folders_edited_by_hand() {
+        let home = Home::new();
+        let config = home.config(&asking(&["agentplot/flume", "agentplot/sluice"]));
+        keep(&config);
+        let file = home.workspace("home");
+        let mut edited = json(&file);
+        edited["folders"] = json!([{"path": "agentplot/sluice"}]);
+        fs::write(
+            &file,
+            serde_json::to_string_pretty(&edited).expect("the edit"),
+        )
+        .expect("the folders edited");
+
+        let (outcome, lines) = keep(&config);
+
+        assert_eq!(outcome, Outcome::Kept);
+        assert_eq!(lines, [written(&file, "agentplot/flume, agentplot/sluice")]);
+        assert_eq!(
+            json(&file),
+            json!({
+                "folders": [{"path": "agentplot/flume"}, {"path": "agentplot/sluice"}],
+                "settings": {},
+            })
+        );
+    }
+
+    /// The views spec's "A quiet pass leaves the workspaces": each file is
+    /// neither written nor said.
+    #[test]
+    fn a_quiet_pass_leaves_the_workspaces() {
+        let home = Home::new();
+        let config = home.config(&drives(
+            true,
+            &[("home", &["agentplot/flume"]), ("work", &["example/crew"])],
+        ));
+        keep(&config);
+        let files = [home.workspace("home"), home.workspace("work")];
+        let before: Vec<(Vec<u8>, u64)> = files
+            .iter()
+            .map(|file| {
+                let ino = fs::metadata(file).expect("the workspace").ino();
+                (fs::read(file).expect("the workspace"), ino)
+            })
+            .collect();
+
+        let (outcome, lines) = keep(&config);
+
+        assert_eq!(outcome, Outcome::Kept);
+        assert_eq!(lines, [] as [String; 0]);
+        for (file, (bytes, ino)) in files.iter().zip(before) {
+            assert_eq!(fs::read(file).expect("the workspace"), bytes);
+            assert_eq!(
+                fs::metadata(file).expect("the workspace").ino(),
+                ino,
+                "{} was written",
+                file.display()
+            );
+        }
+    }
+
+    /// The views spec's "A comment in the workspace": the file is left as
+    /// it is and named at every pass, its words never quoted.
+    #[test]
+    fn a_comment_in_the_workspace() {
+        let home = Home::new();
+        keep(&home.config(&asking(&["agentplot/flume"])));
+        let file = home.workspace("home");
+        let mine = "{\n\
+                    \t// mine\n\
+                    \t\"folders\": [\n\
+                    \t\t{\n\
+                    \t\t\t\"path\": \"agentplot/flume\"\n\
+                    \t\t}\n\
+                    \t]\n\
+                    }\n";
+        fs::write(&file, mine).expect("a comment of the user's");
+        let config = home.config(&asking(&["agentplot/flume", "agentplot/sluice"]));
+
+        let (outcome, lines) = keep(&config);
+
+        assert_eq!(outcome, Outcome::Kept);
+        assert_eq!(fs::read_to_string(&file).expect("the workspace"), mine);
+        assert_eq!(lines.len(), 1, "{lines:#?}");
+        let prefix = format!("{}it is not JSON the runner reads: ", left(&file));
+        assert!(lines[0].starts_with(&prefix), "{lines:#?}");
+        assert!(!lines[0].contains("mine"), "{lines:#?}");
+
+        let (outcome, again) = keep(&config);
+
+        assert_eq!(outcome, Outcome::Kept);
+        assert_eq!(again, lines, "named at every pass");
+        assert_eq!(fs::read_to_string(&file).expect("the workspace"), mine);
+    }
+
+    /// The views spec's "A link at the workspace's path": the link and its
+    /// target are left as they are, and named.
+    #[test]
+    fn a_link_at_the_workspaces_path() {
+        let home = Home::new();
+        let elsewhere = home.path().join("elsewhere/mine.code-workspace");
+        let theirs = "{\"folders\": [{\"path\": \"..\"}]}\n";
+        fs::create_dir_all(elsewhere.parent().expect("its folder")).expect("a folder elsewhere");
+        fs::write(&elsewhere, theirs).expect("a workspace elsewhere");
+        let file = home.workspace("home");
+        fs::create_dir_all(file.parent().expect("the root")).expect("the repository root");
+        std::os::unix::fs::symlink(&elsewhere, &file).expect("a link at the workspace's path");
+
+        let (outcome, lines) = keep(&home.config(&asking(&["agentplot/flume"])));
+
+        assert_eq!(outcome, Outcome::Kept);
+        assert_eq!(lines, [format!("{}it is a link", left(&file))]);
+        assert!(fs::symlink_metadata(&file)
+            .expect("the link")
+            .file_type()
+            .is_symlink());
+        assert_eq!(fs::read_link(&file).expect("the link"), elsewhere);
+        assert_eq!(fs::read_to_string(&elsewhere).expect("its target"), theirs);
+    }
+
+    /// The views spec's "A workspace that cannot be written": no file can
+    /// be made at the repository root, so the file is named and the pass
+    /// fails, the file as it was and no partial file left.
+    #[test]
+    fn a_workspace_that_cannot_be_written() {
+        let home = Home::new();
+        let config = home.config(&asking(&["agentplot/flume"]));
+        keep(&config);
+        let file = home.workspace("home");
+        let edited = "{\"folders\": [], \"settings\": {}}\n";
+        fs::write(&file, edited).expect("the folders edited");
+        let root = file.parent().expect("the repository root");
+        let _mode = Mode::set(root, 0o555);
+
+        let (outcome, lines) = keep(&config);
+
+        assert_eq!(outcome, Outcome::Failed);
+        assert_eq!(lines.len(), 1, "{lines:#?}");
+        let prefix = format!("boomdrive: workspace not written at {}: ", file.display());
+        assert!(lines[0].starts_with(&prefix), "{lines:#?}");
+        assert_eq!(fs::read_to_string(&file).expect("the workspace"), edited);
+        let held: Vec<String> = fs::read_dir(root)
+            .expect("the repository root")
+            .map(|entry| {
+                entry
+                    .expect("an entry")
+                    .file_name()
+                    .to_string_lossy()
+                    .into_owned()
+            })
+            .collect();
+        assert_eq!(held, ["home.code-workspace"]);
+    }
+
+    /// A pass that is stopped writes no workspace.
+    #[test]
+    fn a_stopped_pass_writes_no_workspace() {
+        let home = Home::new();
+        let config = home.config(&asking(&["agentplot/flume"]));
+
+        let (_, lines) = home.pass(&config, true);
+
+        assert_eq!(lines, [] as [String; 0]);
+        assert_eq!(workspaces_under(home.path()), [] as [PathBuf; 0]);
+    }
+}
