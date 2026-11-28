@@ -19,6 +19,7 @@
 
 use crate::carry::{Carrier, Configured, Elsewhere, Least, Passed, Reach};
 use crate::config::{self, Address, Config, ControlPlaneTable, Env, LocalLayer};
+use crate::flume::Flume;
 use crate::flume_host::{self, Source, Subscription, Where};
 use crate::forge::Forge;
 use crate::git::Git;
@@ -27,6 +28,7 @@ use crate::millpond::{self, Ticks};
 use crate::pass::{Keeper, Keeping, Outcome};
 use crate::planes;
 use crate::report::{self, ReportFile};
+use crate::sluice::Sluice;
 use crate::terminal::Relays;
 use crate::{clone, flume, hands, hello, sluice};
 use boomdrive_control::{ControlPlane, Part, Wake};
@@ -273,11 +275,75 @@ impl Programs {
             .with("flume", &self.flume)
             .with("sluice", &self.sluice)
     }
+}
 
-    /// The terminals relayed through these programs' Flume, each of
-    /// their lines said on standard error.
+/// The runner's seam to the tools it runs for its parts and its ticks:
+/// Flume, sluice, the tools whose versions a hello names, millpond's tick
+/// and the terminals' relays. [`Clis`] runs each tool's own command line
+/// at the programs [`Programs`] names; the runner's loop and `run --once`
+/// reach the tools through it alone (core.16, core.29).
+pub trait Toolset: Send + Sync {
+    /// Flume as a part's hands run it: its launches, acts and confirms.
+    fn flume(&self) -> &dyn Flume;
+    /// Flume as a part's pass reads it, its status read from flume host
+    /// by `source`, every other command run as [`Toolset::flume`] runs it.
+    fn flume_reading<'a>(&'a self, source: Source<'a>) -> Box<dyn Flume + 'a>;
+    /// sluice, as a part's pass and its hands run it.
+    fn sluice(&self) -> &dyn Sluice;
+    /// The tools whose versions a hello names.
+    fn versions(&self) -> &dyn hello::Tools;
+    /// millpond's tick of the inbox `inbox`.
+    fn tick(&self, inbox: &str) -> Result<millpond::Reply, millpond::Unrun>;
+    /// The terminals relayed through Flume, each of their lines said on
+    /// standard error.
+    fn relays(&self) -> Relays;
+}
+
+/// Each tool's own command line, at the programs a [`Programs`] names.
+pub struct Clis {
+    flume: flume::Cli,
+    sluice: sluice::Cli,
+    millpond: millpond::Cli,
+    versions: hello::Cli,
+}
+
+impl From<Programs> for Clis {
+    fn from(programs: Programs) -> Clis {
+        Clis {
+            flume: flume::Cli::new(&programs.flume),
+            sluice: sluice::Cli::new(&programs.sluice),
+            millpond: millpond::Cli::new(&programs.millpond),
+            versions: programs.tools(),
+        }
+    }
+}
+
+impl Toolset for Clis {
+    fn flume(&self) -> &dyn Flume {
+        &self.flume
+    }
+
+    fn flume_reading<'a>(&'a self, source: Source<'a>) -> Box<dyn Flume + 'a> {
+        Box::new(flume_host::Resident {
+            cli: &self.flume,
+            source,
+        })
+    }
+
+    fn sluice(&self) -> &dyn Sluice {
+        &self.sluice
+    }
+
+    fn versions(&self) -> &dyn hello::Tools {
+        &self.versions
+    }
+
+    fn tick(&self, inbox: &str) -> Result<millpond::Reply, millpond::Unrun> {
+        self.millpond.tick(inbox)
+    }
+
     fn relays(&self) -> Relays {
-        Relays::new(flume::Cli::new(&self.flume), |line| eprintln!("{line}"))
+        Relays::new(self.flume.clone(), |line| eprintln!("{line}"))
     }
 }
 
@@ -331,9 +397,9 @@ pub struct Runner {
     local: PathBuf,
     data: PathBuf,
     config: Config,
-    /// The programs the runner runs for Flume and sluice, each on the
+    /// The tools the runner runs, each tool's own command line on the
     /// host's `PATH` unless a test puts its own in place.
-    programs: Programs,
+    toolset: Box<dyn Toolset>,
     /// The control plane the configuration names, none where it names
     /// none.
     control: Option<Control>,
@@ -378,7 +444,7 @@ struct Host<'a> {
     local: &'a Path,
     data: &'a Path,
     poll_interval: Duration,
-    programs: &'a Programs,
+    toolset: &'a dyn Toolset,
     notices: &'a Notices,
     locks: &'a Locks,
     report: &'a ReportFile,
@@ -426,7 +492,7 @@ impl Ticker {
     /// fails stops nothing, and where the configuration names no inbox,
     /// none runs (record 0033). Where another pass's ticks are under way,
     /// runs none.
-    fn tick(&self, programs: &Programs, say: Say<'_>) {
+    fn tick(&self, tools: &dyn Toolset, say: Say<'_>) {
         let mut ticks = match self.ticks.try_lock() {
             Ok(ticks) => ticks,
             Err(std::sync::TryLockError::Poisoned(poisoned)) => poisoned.into_inner(),
@@ -434,9 +500,8 @@ impl Ticker {
         };
         let inboxes = self.read.lock().unwrap_or_else(|e| e.into_inner()).clone();
         ticks.keep(&inboxes);
-        let millpond = millpond::Cli::new(&programs.millpond);
         for inbox in &inboxes {
-            ticks.heard(inbox, millpond.tick(inbox), &mut |line| say(line));
+            ticks.heard(inbox, tools.tick(inbox), &mut |line| say(line));
         }
     }
 }
@@ -496,7 +561,7 @@ impl Runner {
             local,
             data,
             config,
-            programs: Programs::on_path(),
+            toolset: Box::new(Clis::from(Programs::on_path())),
             control,
             flume_socket,
             ticker,
@@ -548,7 +613,7 @@ impl Runner {
     /// runs the runner with tools of its own, a control plane named or
     /// not.
     pub fn tools(&mut self, programs: Programs) {
-        self.programs = programs;
+        self.toolset = Box::new(Clis::from(programs));
     }
 
     /// Puts flume host's socket at `socket`, in place of the one the
@@ -636,7 +701,7 @@ impl Runner {
             local: &self.local,
             data: &self.data,
             poll_interval: control.poll_interval,
-            programs: &self.programs,
+            toolset: &*self.toolset,
             notices: &self.notices,
             locks: &self.locks,
             report: &self.report,
@@ -685,7 +750,7 @@ impl Runner {
                         .map(|part| {
                             let (host, config) = (&host, config.clone());
                             scope.spawn(move || {
-                                let relays = host.programs.relays();
+                                let relays = host.toolset.relays();
                                 let (reach, least, elsewhere) =
                                     (Reach::default(), Least::default(), Elsewhere::default());
                                 host.carry_once(
@@ -714,7 +779,7 @@ impl Runner {
         if self.stopped(say) {
             return Outcome::Failed;
         }
-        self.ticker.tick(&self.programs, say);
+        self.ticker.tick(&*self.toolset, say);
         kept.and(carried)
     }
 
@@ -816,7 +881,7 @@ impl Runner {
                 // behind a tick; a keeping pass on a configuration that did
                 // not read ticks all the same (record 0033).
                 if kept && !followed {
-                    this.ticker.tick(&this.programs, say);
+                    this.ticker.tick(&*this.toolset, say);
                 }
                 loop {
                     if this.stop.load(Ordering::SeqCst) {
@@ -940,13 +1005,11 @@ impl Host<'_> {
     /// further pass and no tick, and waits for every command in flight
     /// to end, taking and sending their answers.
     fn carry_on(&self, part: &mut Part, bell: &Bell, say: Say<'_>) {
-        let relays = self.programs.relays();
+        let relays = self.toolset.relays();
         let (reach, least, elsewhere) = (Reach::default(), Least::default(), Elsewhere::default());
-        let flume = flume::Cli::new(&self.programs.flume);
-        let sluice = sluice::Cli::new(&self.programs.sluice);
         hands::carried(
-            &flume,
-            &sluice,
+            self.toolset.flume(),
+            self.toolset.sluice(),
             self.locks,
             &|| bell.answered(),
             |underway| {
@@ -988,7 +1051,7 @@ impl Host<'_> {
                             // inbox, no part of it, before the part waits
                             // (record 0033).
                             if !bell.stopped() {
-                                self.ticker.tick(self.programs, say);
+                                self.ticker.tick(self.toolset, say);
                             }
                         }
                     }
@@ -1072,24 +1135,18 @@ impl Host<'_> {
                 ));
             }
         };
-        let cli = flume::Cli::new(&self.programs.flume);
-        let flume = flume_host::Resident {
-            cli: &cli,
-            source: match self.subscription {
-                Some(subscription) => Source::Subscription(subscription),
-                None => Source::Ask(self.flume_socket),
-            },
-        };
-        let sluice = sluice::Cli::new(&self.programs.sluice);
-        let tools = self.programs.tools();
+        let flume = self.toolset.flume_reading(match self.subscription {
+            Some(subscription) => Source::Subscription(subscription),
+            None => Source::Ask(self.flume_socket),
+        });
         let control_dir = report::control_dir(self.data);
         let carrier = Carrier {
             label,
-            flume: &flume,
-            sluice: &sluice,
+            flume: &*flume,
+            sluice: self.toolset.sluice(),
             git: self.git,
             clones: &clones,
-            tools: &tools,
+            tools: self.toolset.versions(),
             notices: self.notices,
             control_dir: &control_dir,
             report: self.report,
@@ -1193,11 +1250,11 @@ mod tests {
         fs::write(&millpond, program).unwrap();
         fs::set_permissions(&millpond, fs::Permissions::from_mode(0o755)).unwrap();
         let ticker = Ticker::new(vec!["home".to_string()]);
-        let programs = super::Programs {
+        let programs = super::Clis::from(super::Programs {
             flume: dir.path().join("flume"),
             sluice: dir.path().join("sluice"),
             millpond,
-        };
+        });
         let said = std::sync::Mutex::new(Vec::new());
         let say = |line: String| said.lock().unwrap().push(line);
         std::thread::scope(|scope| {
